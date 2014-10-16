@@ -93,7 +93,7 @@ exports.delete = function(req, res) {
 exports.update = function(req, res) {
   debug("Create/update client: %j", req.body);
   var Client = req.app.globals.Client;
-  Promise.from(null).then(function() {
+  Promise.resolve(null).then(function() {
     // Create client if requested
     if (req.body.updateOrCreate == 'create') {
       return Client.create({
