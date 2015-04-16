@@ -15,37 +15,50 @@ var taskcluster = require('taskcluster-client');
 var url         = require('url');
 
 /** Index page (the only page we have) */
-var renderIndex = function(authFailed, req, res){
-  credentials = taskcluster.createTemporaryCredentials({
-    start:        new Date(),
-    expiry:       new Date(new Date().getTime() + 31 * 24 * 60 * 60 * 1000),
-    scopes:       ['*'],
-    credentials:  req.app.globals.root
-  });
-  if (typeof(credentials.certificate) !== 'string') {
-    credentials.certificate = JSON.stringify(credentials.certificate);
-  }
-
-  // Add temporary credentials to target URL
-  var target = undefined;
-  if (req.query.target) {
-    target = url.parse(req.query.target);
-    delete target.search;
-    if (!target.query) {
-      target.query = {};
+var renderIndex = function(authFailed, req, res) {
+  // Load client so we can sign
+  client.load(req.app.globals.clientIdForTempCreds).then(function(client) {
+    var credentials = taskcluster.createTemporaryCredentials({
+      start:        new Date(),
+      expiry:       new Date(new Date().getTime() + 31 * 24 * 60 * 60 * 1000),
+      scopes:       client.scopes,
+      credentials:  {
+        clientId:     client.clientId,
+        accessToken:  client.accessToken
+      }
+    });
+  }, function(err) {
+    return {
+      clientId:     '',
+      accessToken:  '',
+      certificate:  'Internal server error'
+    };
+  }).then(function(credentials) {
+    if (typeof(credentials.certificate) !== 'string') {
+      credentials.certificate = JSON.stringify(credentials.certificate);
     }
-    target.query.clientId     = credentials.clientId;
-    target.query.accessToken  = credentials.accessToken;
-    target.query.certificate  = credentials.certificate;
-  }
 
-  // Render login page
-  res.render('login', {
-    query:        req.query,
-    target:       url.format(target),
-    credentials:  credentials,
-    querystring:  querystring.stringify(req.query),
-    authFailed:   authFailed
+    // Add temporary credentials to target URL
+    var target = undefined;
+    if (req.query.target) {
+      target = url.parse(req.query.target);
+      delete target.search;
+      if (!target.query) {
+        target.query = {};
+      }
+      target.query.clientId     = credentials.clientId;
+      target.query.accessToken  = credentials.accessToken;
+      target.query.certificate  = credentials.certificate;
+    }
+
+    // Render login page
+    res.render('login', {
+      query:        req.query,
+      target:       url.format(target),
+      credentials:  credentials,
+      querystring:  querystring.stringify(req.query),
+      authFailed:   authFailed
+    });
   });
 };
 
