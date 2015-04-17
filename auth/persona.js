@@ -17,8 +17,9 @@ var url         = require('url');
 /** Index page (the only page we have) */
 var renderIndex = function(authFailed, req, res) {
   // Load client so we can sign
-  client.load(req.app.globals.clientIdForTempCreds).then(function(client) {
-    var credentials = taskcluster.createTemporaryCredentials({
+  var Client = req.app.globals.Client;
+  Client.load(req.app.globals.clientIdForTempCreds).then(function(client) {
+    return taskcluster.createTemporaryCredentials({
       start:        new Date(),
       expiry:       new Date(new Date().getTime() + 31 * 24 * 60 * 60 * 1000),
       scopes:       client.scopes,
@@ -28,6 +29,7 @@ var renderIndex = function(authFailed, req, res) {
       }
     });
   }, function(err) {
+    debug("Error loading client: %s, as JSON: %j", err, err, err.stack);
     return {
       clientId:     '',
       accessToken:  '',
