@@ -11,6 +11,8 @@ suite('api', function() {
     await helper.auth.ping();
   });
 
+  return;
+
   test('getCredentials', async () => {
     var result = await helper.auth.getCredentials(
       helper.root.clientId

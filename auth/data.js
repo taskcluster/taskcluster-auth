@@ -1,6 +1,7 @@
 var debug   = require('debug')('auth:data:client');
 var base    = require('taskcluster-base');
 var assert  = require('assert');
+var _       = require('lodash');
 
 /** Configure a client Entity subclass */
 var Client = base.LegacyEntity.configure({
@@ -75,6 +76,63 @@ Client.createClientLoader = function() {
       debug('Failed to load client: ' + clientId);
       throw err;
     });
+  };
+};
+
+Client.createClientLoader2 = function() {
+  var Client = this;
+  return async (clientId) => {
+    try {
+      var client = await Client.load(clientId);
+    } catch (err) {
+      debug('Failed to load client: ' + clientId);
+      throw new Error("Failed to load client");
+    }
+    if (client.expires.getTime() < new Date().getTime()) {
+      throw new Error("Credentials expired!");
+    }
+    return {
+      clientId:     client.clientId,
+      accessToken:  client.accessToken,
+      scopes:       client.scopes
+    };
+  };
+};
+
+Client.createClientLoader3 = function() {
+  var clientLoader = this.createClientLoader2();
+  var cache = {};
+  setInterval(() => {
+    // clean up cache
+    var now = new Date().getTime();
+    _.keys(cache).forEach(clientId => {
+      if (cache[clientId].reloadAt < now) {
+        delete cache[clientId];
+      }
+    });
+  }, 5 * 60 * 1000);
+  return async (clientId) => {
+    var now = new Date().getTime();
+    var entry = cache[clientId];
+    if (!entry || entry.reloadAt < now) {
+      try {
+        cache[clientId] = entry = {
+          client:   await clientLoader(clientId),
+          error:    null,
+          reloadAt: now + 10 * 60 * 1000
+        };
+      } catch (err) {
+        cache[clientId] = entry = {
+          client:   null,
+          error:    err,
+          reloadAt: now + 10 * 60 * 1000
+        };
+      }
+    }
+    if (entry.error) {
+      throw entry.error;
+    }
+    return entry.client;
   };
 };
 
