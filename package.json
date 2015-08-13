@@ -34,7 +34,9 @@
   },
   "devDependencies": {
     "mocha":                            "^2.2.5",
-    "assume":                           "^1.2.4"
+    "assume":                           "^1.2.4",
+    "superagent":                       "^1.1.0",
+    "superagent-promise":               "^0.2.0"
   },
   "engines": {
     "node":                             "0.12.x",

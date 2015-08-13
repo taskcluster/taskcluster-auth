@@ -99,7 +99,15 @@ Client.createClientLoader2 = function() {
   };
 };
 
-Client.createClientLoader3 = function() {
+
+/** Create caching client loader */
+Client.createClientLoader3 = function(options) {
+  options = _.defaults(options || {}, {
+    cacheTimeout:       10 * 60 * 60 * 1000
+  });
+  assert(typeof(options.cacheTimeout) == 'number',
+         "Expected options.cacheTimeout to be a number!");
+
   var clientLoader = this.createClientLoader2();
   var cache = {};
   setInterval(() => {
@@ -110,24 +118,23 @@ Client.createClientLoader3 = function() {
         delete cache[clientId];
       }
     });
-  }, 5 * 60 * 1000);
+  }, options.cacheTimeout);
+
   return async (clientId) => {
     var now = new Date().getTime();
     var entry = cache[clientId];
     if (!entry || entry.reloadAt < now) {
+      var error = null, client = null;
       try {
-        cache[clientId] = entry = {
-          client:   await clientLoader(clientId),
-          error:    null,
-          reloadAt: now + 10 * 60 * 1000
-        };
+        client = await clientLoader(clientId);
       } catch (err) {
-        cache[clientId] = entry = {
-          client:   null,
-          error:    err,
-          reloadAt: now + 10 * 60 * 1000
-        };
+        error = err;
       }
+      cache[clientId] = entry = {
+        client,
+        error,
+        reloadAt: now + options.cacheTimeout
+      };
     }
     if (entry.error) {
       throw entry.error;

@@ -70,8 +70,10 @@ var launch = function(profile) {
       return Client.createRootClient(cfg.get('auth:root'));
     })
   ]).then(function() {
-    var signatureValidator = base.API.makeSignatureValidator({
-      clientLoader: Client.createClientLoader3()
+    var signatureValidator = base.API.createSignatureValidator({
+      clientLoader: Client.createClientLoader3({
+        cacheTimeout:       cfg.get('auth:clientCacheTimeout')
+      })
     });
 
     // Create API router and publish reference if needed

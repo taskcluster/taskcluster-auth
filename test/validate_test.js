@@ -33,6 +33,18 @@ var testCases = [
     path:     'client-credentials-fail.json',
     schema:   'auth/v1/client-credentials-response.json#',
     success:  false
+  }, {
+    path:     'authenticate-hawk-request.json',
+    schema:   'auth/v1/authenticate-hawk-request.json#',
+    success:  true
+  }, {
+    path:     'authenticate-hawk-request-ipv4.json',
+    schema:   'auth/v1/authenticate-hawk-request.json#',
+    success:  true
+  }, {
+    path:     'authenticate-hawk-request-bad.json',
+    schema:   'auth/v1/authenticate-hawk-request.json#',
+    success:  false
   }
 ];
 

@@ -1,0 +1,29 @@
+$schema:  http://json-schema.org/draft-04/schema#
+title:                    "Hawk Signature Authentication Response"
+description: |
+  Response from a request to authenticate a hawk request.
+type:                     object
+properties:
+  error:
+    type:                 boolean
+    description: |
+      Indicates if there was an authentication error.
+      If `true` the `message` property contains an explanation.
+  scopes:
+    description: |
+      List of scopes the client is authorized to access
+    type:                 array
+    items:
+      description: |
+        Scope the client is authorized to access
+      type:               string
+  message:
+    type:                 string
+    description: |
+      Message saying why the authentication failed, or in case of success
+      just a useless string saying "authenticated".
+additionalProperties:       false
+required:
+  - error
+  - scopes
+  - message
