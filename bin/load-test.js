@@ -86,7 +86,7 @@ var launch = async function(profile) {
         retries:      0,
         agent:        agent
       });
-      reqForVerification = makeSignature();
+      var reqForVerification = makeSignature();
       setInterval(function() {
         reqForVerification = makeSignature();
       }, 3 * 60 * 1000);
