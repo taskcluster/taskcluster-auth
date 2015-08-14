@@ -13,6 +13,7 @@ module.exports = {
 
   // Server configuration
   server: {
+    publicUrl:                      'https://tc-auth-load-test.herokuapp.com',
     env:                            'production',
     forceSSL:                       true,
     // We trust the proxy on heroku, as the SSL end-point provided by heroku
