@@ -82,7 +82,7 @@ var launch = async function(profile) {
         baseUrl:      cfg.get('server:publicUrl') + '/v1',
       }));
       var auth = new Auth({
-        credentials:  cfg.get('auth:root'), //TODO: Try without this!!!
+        //credentials:  cfg.get('auth:root'), //TODO: Try without this!!!
         retries:      0,
         agent:        agent
       });
