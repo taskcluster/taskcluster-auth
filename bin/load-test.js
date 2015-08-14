@@ -6,6 +6,7 @@ var v1            = require('../routes/api/v1');
 var https         = require('https');
 var http          = require('http');
 var hawk          = require('hawk');
+var taskcluster   = require('taskcluster-client');
 
 /** Launch server */
 var launch = async function(profile) {
