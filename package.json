@@ -30,7 +30,8 @@
     "express":                          "^4.12.4",
     "babel":                            "^5.0.9",
     "kexec":                            "^1.2.0",
-    "fast-azure-storage":               "^0.1.1"
+    "fast-azure-storage":               "^0.1.1",
+    "hawk":                             "2.3.0"
   },
   "devDependencies": {
     "mocha":                            "^2.2.5",

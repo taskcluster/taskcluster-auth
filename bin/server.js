@@ -87,7 +87,6 @@ var launch = function(profile) {
         rootClientId:       cfg.get('auth:root:clientId'),
       },
       validator:          validator,
-      //clientLoader: Client.createClientLoader(),
       signatureValidator: signatureValidator,
       publish:            cfg.get('auth:publishMetaData') === 'true',
       baseUrl:            cfg.get('server:publicUrl') + '/v1',
