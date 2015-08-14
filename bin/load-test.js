@@ -7,6 +7,7 @@ var https         = require('https');
 var http          = require('http');
 var hawk          = require('hawk');
 var taskcluster   = require('taskcluster-client');
+var assert        = require('assert');
 
 /** Launch server */
 var launch = async function(profile) {
