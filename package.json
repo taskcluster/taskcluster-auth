@@ -40,7 +40,7 @@
     "superagent-promise":               "^0.2.0"
   },
   "engines": {
-    "node":                             "0.12.x",
-    "npm":                              "2.7.x"
+    "node":                             "^0.12.0",
+    "npm":                              "^2.0.0"
   }
 }
