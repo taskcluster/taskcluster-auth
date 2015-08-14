@@ -59,7 +59,7 @@ var launch = async function(profile) {
       var Auth = taskcluster.createClient(v1.reference({
         baseUrl:      cfg.get('server:publicUrl') + '/v1',
       }));
-      var queue = new Auth({
+      var auth = new Auth({
         credentials:  cfg.get('auth:root'), //TODO: Try without this!!!
         retries:      0,
         agent:        agent
