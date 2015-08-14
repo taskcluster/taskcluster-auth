@@ -48,6 +48,27 @@ var launch = async function(profile) {
     failed  = 0;
   };
 
+  var makeSignature = function() {
+    var reqUrl = 'http://localhost:1207/v1/client/authed-client/credentials';
+    var header = hawk.client.header(reqUrl, 'GET', {
+      credentials: {
+        id:         cfg.get('auth:root').clientId,
+        key:        cfg.get('auth:root').accessToken,
+        algorithm:  'sha256',
+      },
+      ext: new Buffer(JSON.stringify({
+        authorizedScopes: ['auth:credentials']
+      })).toString('base64')
+    }).field;
+    return {
+      method:         'get',
+      resource:       '/v1/client/authed-client/credentials',
+      host:           'localhost',
+      port:           1207,
+      authorization:  header
+    };
+  };
+
   var loops = 0;
   var exiting = false;
   var startLoop = () => {
@@ -65,24 +86,10 @@ var launch = async function(profile) {
         retries:      0,
         agent:        agent
       });
-      var reqUrl = 'http://localhost:1207/v1/client/authed-client/credentials';
-      var header = hawk.client.header(reqUrl, 'GET', {
-        credentials: {
-          id:         cfg.get('auth:root').clientId,
-          key:        cfg.get('auth:root').accessToken,
-          algorithm:  'sha256',
-        },
-        ext: new Buffer(JSON.stringify({
-          authorizedScopes: ['auth:credentials']
-        })).toString('base64')
-      }).field;
-      var reqForVerification = {
-        method:         'get',
-        resource:       '/v1/client/authed-client/credentials',
-        host:           'localhost',
-        port:           1207,
-        authorization:  header
-      };
+      reqForVerification = makeSignature();
+      setInterval(function() {
+        reqForVerification = makeSignature();
+      }, 3 * 60 * 1000);
       while(true) {
         await auth.authenticateHawk(reqForVerification).then(result => {
           assert(result.error === false, "Validation error");
@@ -111,7 +118,7 @@ var launch = async function(profile) {
   while(loops < 2) startLoop();
   await base.testing.sleep(CYCLE_SECONDS * 1000);
   summary();
-/*
+
 
   //  4 req in parallel
   while(loops < 4) startLoop();
