@@ -48,16 +48,24 @@ var launch = async function(profile) {
     failed  = 0;
   };
 
+
+
   var makeSignature = function() {
+    var tempCreds = taskcluster.createTemporaryCredentials({
+      start: new Date(),
+      expiry: taskcluster.fromNow("1 hour"),
+      scopes: ["auth:credentials"],
+      credentials: cfg.get('auth:root')
+    });
     var reqUrl = 'http://localhost:1207/v1/client/authed-client/credentials';
     var header = hawk.client.header(reqUrl, 'GET', {
       credentials: {
-        id:         cfg.get('auth:root').clientId,
-        key:        cfg.get('auth:root').accessToken,
+        id:         tempCreds.clientId,
+        key:        tempCreds.accessToken,
         algorithm:  'sha256',
       },
       ext: new Buffer(JSON.stringify({
-        authorizedScopes: ['auth:credentials']
+        certificate: JSON.parse(tempCreds.certificate)
       })).toString('base64')
     }).field;
     return {
