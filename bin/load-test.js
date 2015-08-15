@@ -42,13 +42,17 @@ var launch = async function(profile) {
   var success = 0;
   var failed  = 0;
   var summary = () => {
-    console.log("%s req/s success: %s, failed: %s",
+    console.log("SUMMARY: %s req/s success: %s, failed: %s",
                 fmt(success / CYCLE_SECONDS), success, failed)
     success = 0;
     failed  = 0;
   };
 
 
+  setInterval(function() {
+    console.log(" - %s req/s success: %s, failed: %s",
+                fmt(success / CYCLE_SECONDS), success, failed)
+  }, 10 * 60 * 1000);
 
   var makeSignature = function() {
     var tempCreds = taskcluster.createTemporaryCredentials({
