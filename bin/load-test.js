@@ -37,7 +37,7 @@ var launch = async function(profile) {
     return Math.round(n * 100) / 100;
   };
 
-  const CYCLE_SECONDS = 3 * 60;
+  const CYCLE_SECONDS = 3 * 60 * 20;
 
   var success = 0;
   var failed  = 0;
@@ -121,7 +121,7 @@ var launch = async function(profile) {
   };
 
 
-
+  /*
   //  2 req in parallel
   while(loops < 2) startLoop();
   await base.testing.sleep(CYCLE_SECONDS * 1000);
@@ -132,10 +132,13 @@ var launch = async function(profile) {
   while(loops < 4) startLoop();
   await base.testing.sleep(CYCLE_SECONDS * 1000);
   summary();
+  // */
   //  8 req in parallel
   while(loops < 8) startLoop();
   await base.testing.sleep(CYCLE_SECONDS * 1000);
   summary();
+
+  /*
   // 16 req in parallel
   while(loops < 16) startLoop();
   await base.testing.sleep(CYCLE_SECONDS * 1000);
