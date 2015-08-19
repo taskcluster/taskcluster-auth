@@ -37,7 +37,7 @@ var launch = async function(profile) {
     return Math.round(n * 100) / 100;
   };
 
-  const CYCLE_SECONDS = 3 * 60 * 20;
+  const CYCLE_SECONDS = 3 * 60;
 
   var success = 0;
   var failed  = 0;
@@ -48,11 +48,11 @@ var launch = async function(profile) {
     failed  = 0;
   };
 
-
+  /*
   setInterval(function() {
     console.log(" - %s req/s success: %s, failed: %s",
                 fmt(success / CYCLE_SECONDS), success, failed)
-  }, 10 * 60 * 1000);
+  }, 10 * 60 * 1000);// */
 
   var makeSignature = function() {
     var tempCreds = taskcluster.createTemporaryCredentials({
