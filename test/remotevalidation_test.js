@@ -41,7 +41,7 @@ suite("Remote Signature Validation", () => {
     });
 
     // Create router for the API
-    var router = myapi .router({
+    var router = myapi.router({
       validator:    await base.validator(),
       authBaseUrl:  helper.baseUrl
     });
