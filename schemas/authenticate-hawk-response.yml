@@ -6,6 +6,12 @@ anyOf:
   - title:                    "Authentication Successful Response"
     type:                     object
     properties:
+      status:
+        description: |
+          The kind of response, `auth-failed` or `auth-success`.
+        type:                 string
+        enum:
+          - auth-success
       scopes:
         description: |
           List of scopes the client is authorized to access
@@ -31,15 +37,23 @@ anyOf:
         type:                 string
     additionalProperties:       false
     required:
+      - status
       - scopes
       - scheme
   - title:                    "Authentication Failed Response"
     type:                     object
     properties:
+      status:
+        description: |
+          The kind of response, `auth-failed` or `auth-success`.
+        type:                 string
+        enum:
+          - auth-failed
       message:
         type:                 string
         description: |
           Message saying why the authentication failed.
     additionalProperties:       false
     required:
+      - status
       - message
