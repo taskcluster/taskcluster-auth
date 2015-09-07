@@ -14,6 +14,48 @@ var api = new base.API({
   ].join('\n')
 });
 
+///////////////// New API design
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+///////////////// Legacy API
+
+
+
+
 // Export API
 module.exports = api;
 
