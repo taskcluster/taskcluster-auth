@@ -216,7 +216,7 @@ suite("Remote Signature Validation", () => {
     var clientId = slugid.v4();
     var result = await helper.auth.createClient(clientId, {
       scopes:       ['myapi:*'],
-      expires:      new Date(1998, 1, 1), // far out in the future
+      expires:      new Date(1998, 1, 1), // far back in the past
       name:         "test-client",
       description:  "Client used by automatic tests, file a bug and delete if" +
                     " you ever see this client!"
