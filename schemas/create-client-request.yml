@@ -1,0 +1,21 @@
+$schema:  http://json-schema.org/draft-04/schema#
+title:                      "Create Client Request"
+description: |
+  Properties to create a client.
+type:                       object
+properties:
+  expires:
+    description: |
+      Date and time where the clients access is set to expire
+    type:                   string
+    format:                 date-time
+  description:
+    description: |
+      Description of what these credentials are used for in markdown.
+      Should include who is the owner, point of contact.
+    type:                   string
+    maxLength:              10240
+additionalProperties:       false
+required:
+  - expires
+  - description
