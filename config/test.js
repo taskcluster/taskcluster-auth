@@ -1,8 +1,10 @@
 module.exports = {
   // Component specific configuration
   auth: {
-    // Azure table for the client table
-    clientTableName:                'TestClients',
+    clientTableName:      'TestClients',
+    rolesTableName:       'TestRoles',
+    tableSigningKey:      'not-a-secret-so-you-cant-guess-it',
+    tableCryptoKey:       'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 
     // Publish references and schemas
     publishMetaData:                'false',
@@ -10,17 +12,13 @@ module.exports = {
     // Name of component in statistics
     statsComponent:                 'auth-tests',
 
-    // root credentials artificially inserted when application is started
-    root: {           // Credentials used for testing
-      clientId:       'ctVNevJPRbe6ICL5-nhZkw',
-      accessToken:    'EO-5D7oBTYWMTJ79HYGf-guFVXRtIbRKWoXOyb9EpkIQ'
-    },
+    // root accessToken used for testing
+    rootAccessToken:   'EO-5D7oBTYWMTJ79HYGf-guFVXRtIbRKWoXOyb9EpkIQ',
+
     // Must be configured locally
     azureAccounts:    "{}",
 
-    clientIdForTempCreds: 'ctVNevJPRbe6ICL5-nhZkw',
-
-    clientCacheTimeout: 1000
+    clientIdForTempCreds: 'ctVNevJPRbe6ICL5-nhZkw'
   },
 
   test: {
