@@ -1,8 +1,8 @@
 module.exports = {
   // Component specific configuration
   auth: {
-    clientTableName:      'TestClients',
-    rolesTableName:       'TestRoles',
+    clientTableName:      'TestClients2',
+    rolesTableName:       'TestRoles2',
     tableSigningKey:      'not-a-secret-so-you-cant-guess-it',
     tableCryptoKey:       'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 
@@ -13,7 +13,7 @@ module.exports = {
     statsComponent:                 'auth-tests',
 
     // root accessToken used for testing
-    rootAccessToken:   'EO-5D7oBTYWMTJ79HYGf-guFVXRtIbRKWoXOyb9EpkIQ',
+    rootAccessToken:   'PKqZk1pIRgKnSLNXC86rKwl5Rp5Ki4SsKlZGEu2_kGNQ',
 
     // Must be configured locally
     azureAccounts:    "{}",

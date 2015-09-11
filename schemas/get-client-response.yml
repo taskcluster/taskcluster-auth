@@ -43,6 +43,14 @@ properties:
       Date and time of when the `accessToken` was reset last time.
     type:                   string
     format:                 date-time
+  expandedScopes:
+    description: |
+      List of scopes granted to this client by matching roles.
+    type:                   array
+    items:
+      description: |
+        Scope that client is granted by a role
+      type:                 string
 additionalProperties:       false
 required:
   - clientId
@@ -52,3 +60,4 @@ required:
   - lastModified
   - lastDateUsed
   - lastRotated
+  - expandedScopes

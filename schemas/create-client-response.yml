@@ -1,12 +1,12 @@
 $schema:  http://json-schema.org/draft-04/schema#
 title:                      "Create Client Response"
 description: |
-  Get all details about a client including the `accessToken`
+  All details about a client including the `accessToken`
 type:                       object
 properties:
   clientId:
     description: |
-      ClientId of the client scopes is requested about
+      ClientId of the client
     type:                 string
     pattern:              {"$const": "identifier-pattern"}
   accessToken:
@@ -49,6 +49,14 @@ properties:
       Date and time of when the `accessToken` was reset last time.
     type:                   string
     format:                 date-time
+  expandedScopes:
+    description: |
+      List of scopes granted to this client by matching roles.
+    type:                   array
+    items:
+      description: |
+        Scope that client is granted by a role
+      type:                 string
 additionalProperties:       false
 required:
   - clientId
@@ -59,3 +67,4 @@ required:
   - lastModified
   - lastDateUsed
   - lastRotated
+  - expandedScopes

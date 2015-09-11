@@ -50,26 +50,36 @@ var launch = async function(profile) {
     process:    'server'
   });
 
+  // Create resolver
+  var resolver = new ScopeResolver();
+
   // Configure client table
-  var Client = data.Client.configure({
-    tableName:    cfg.get('auth:clientTableName'),
+  var Client = data.Client.setup({
+    table:        cfg.get('auth:clientTableName'),
     credentials:  cfg.get('azure'),
     signingKey:   cfg.get('auth:tableSigningKey'),
-    cryptoKey:    cfg.get('auth:tableCryptoKey')
+    cryptoKey:    cfg.get('auth:tableCryptoKey'),
+    drain:        influx,
+    component:    cfg.get('auth:statsComponent'),
+    process:      'server',
+    context:      {resolver}
   });
 
   // Configure role table
-  var Role = data.Role.configure({
-    tableName:    cfg.get('auth:rolesTableName'),
+  var Role = data.Role.setup({
+    table:        cfg.get('auth:rolesTableName'),
     credentials:  cfg.get('azure'),
     signingKey:   cfg.get('auth:tableSigningKey'),
-    cryptoKey:    cfg.get('auth:tableCryptoKey')
+    drain:        influx,
+    component:    cfg.get('auth:statsComponent'),
+    process:      'server',
+    context:      {resolver}
   });
 
-  var validator, publisher, exchangePrefix;
+  // Initialize validator and publish schemas if needed
+  var validator, publisher;
   await Promise.all([
     (async () => {
-      // Initialize validator and publish schemas if needed
       validator = await base.validator({
         folder:           path.join(__dirname, '..', 'schemas'),
         constants:        require('../schemas/constants'),
@@ -89,13 +99,8 @@ var launch = async function(profile) {
         component:        cfg.get('auth:statsComponent'),
         process:          'server'
       });
-
-      exchangePrefix = exchanges.reference({
-        credentials:      cfg.get('pulse'),
-        exchangePrefix:   cfg.get('auth:exchangePrefix')
-      }).exchangePrefix;
     })(),
-    (async() {
+    (async () => {
       // Ensure tables exist
       await Promise.all([
         Client.ensureTable(),
@@ -106,21 +111,18 @@ var launch = async function(profile) {
         await Client.ensureRootClient(cfg.get('auth:rootAccessToken'));
         await Role.ensureRootRole();
       }
-    })
+    })()
   ]);
 
-  // Create resolver
-  var resolver = new ScopeResolver({
-    Client,
-    Role,
-    exchangePrefix,
-    connection: new taskcluster.PulseConnection({
-      credentials: cfg.get('pulse')
-    })
-  });
-
   // Load everything for resolver
-  await resolver.setup();
+  await resolver.setup({
+    Client, Role,
+    exchangeReference: exchanges.reference({
+      credentials:      cfg.get('pulse'),
+      exchangePrefix:   cfg.get('auth:exchangePrefix')
+    }),
+    connection: new taskcluster.PulseConnection(cfg.get('pulse'))
+  });
 
   // Create signature validator
   var signatureValidator = resolver.createSignatureValidator();
@@ -135,8 +137,8 @@ var launch = async function(profile) {
       azureAccounts:      JSON.parse(cfg.get('auth:azureAccounts')),
       signatureValidator,
     },
-    validator:          validator,
-    signatureValidator: signatureValidator,
+    validator,
+    signatureValidator,
     publish:            cfg.get('auth:publishMetaData') === 'true',
     baseUrl:            cfg.get('server:publicUrl') + '/v1',
     referencePrefix:    'auth/v1/api.json',

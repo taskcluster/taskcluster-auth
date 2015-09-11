@@ -33,6 +33,16 @@ properties:
       Date and time of last modification
     type:                   string
     format:                 date-time
+  expandedScopes:
+    description: |
+      List of scopes granted anyone who assumes this role, including anything
+      granted by roles that can be assumed when you have this role.
+      Hence, this includes any scopes in-directly granted as well.
+    type:                   array
+    items:
+      description: |
+        Scope this role grants
+      type:                 string
 additionalProperties:       false
 required:
   - roleId
@@ -40,3 +50,4 @@ required:
   - description
   - created
   - lastModified
+  - expandedScopes

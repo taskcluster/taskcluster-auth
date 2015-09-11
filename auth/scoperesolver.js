@@ -1,43 +1,15 @@
 var _           = require('lodash');
 var assert      = require('assert');
-var data        = require('./data');
 var taskcluster = require('taskcluster-client');
-var events      = require("events");
+var events      = require('events');
+var base        = require('taskcluster-base');
+var debug       = require('debug')('auth:ScopeResolver');
 
 class ScopeResolver extends events.EventEmitter {
-  /**
-   * Create scope resolver
-   *
-   * options:
-   * {
-   *   Client:              // data.Client object
-   *   Role:                // data.Role object
-   *   connection:          // PulseConnection object
-   *   exchangePrefix:      // Prefix for exchanges monitored
-   *   cacheExpiry:         // Time before clearing cache
-   *   minReloadDelay:      // Minimum delay between reloads
-   * }
-   *
-   */
-  constructor(options) {
+  /** Create ScopeResolver */
+  constructor() {
     super();
-    options = _.defaults({}, options || {}, {
-      cacheExpiry:    10 * 60 * 1000,   // default to 10 min
-      minReloadDelay:  1 * 60 * 1000,   // default to 1 min
-    });
-    assert(options.Client instanceof data.Client,
-           "Expected options.Client to be an instance of data.Client");
-    assert(options.Role instanceof data.Role,
-           "Expected options.Role to be an instance of data.Role");
-    assert(options.connection instanceof taskcluster.PulseConnection,
-           "Expected options.connection to be a PulseConnection object");
-    this._Client        = options.Client;
-    this._Role          = options.Role;
-    this._connection    = options.connection;
-    this._listener      = null;
-    this._reloadTimeout = null;
-    this._lastReload    = Date.now();
-    this._options       = options;
+
     // Mapping from clientId to client objects on the form
     // {clientId, accessToken, scopes: [...], updateLastUsed: true || false}
     this._clientCache   = {};
@@ -46,16 +18,43 @@ class ScopeResolver extends events.EventEmitter {
     this._roleCache     = [];
   }
 
-  /** Reload cache, setup interval for reloading cache, start listening */
-  async setup() {
-    // Create authEvents client
-    var authEvents = new taskcluster.AuthEvents({
-      exchangePrefix: this._options.exchangePrefix
+  /**
+   * Load cache, setup interval for reloading cache, start listening
+   *
+   * options:
+   * {
+   *   Client:              // data.Client object
+   *   Role:                // data.Role object
+   *   connection:          // PulseConnection object
+   *   exchangeReference:   // reference for exchanges declared
+   *   cacheExpiry:         // Time before clearing cache
+   *   minReloadDelay:      // Minimum delay between reloads
+   * }
+   *
+   */
+  async setup(options) {
+    options = _.defaults({}, options || {}, {
+      cacheExpiry:    10 * 60 * 1000,   // default to 10 min
+      minReloadDelay:  1 * 60 * 1000,   // default to 1 min
     });
+    assert(options.Client, "Expected options.Client");
+    assert(options.Role, "Expected options.Role");
+    assert(options.exchangeReference, "Expected options.exchangeReference");
+    assert(options.connection instanceof taskcluster.PulseConnection,
+           "Expected options.connection to be a PulseConnection object");
+    this._Client        = options.Client;
+    this._Role          = options.Role;
+    this._reloadTimeout = null;
+    this._lastReload    = Date.now();
+    this._options       = options;
+
+    // Create authEvents client
+    var AuthEvents = taskcluster.createClient(this._options.exchangeReference);
+    var authEvents = new AuthEvents();
 
     // Create PulseListener
     this._listener = new taskcluster.PulseListener({
-      connection:   this._connection,
+      connection:   options.connection,
       reconnect:    true
     });
 
@@ -87,7 +86,7 @@ class ScopeResolver extends events.EventEmitter {
 
     // If timeSinceLastReload is greater than minimum, then we reload now
     var timeSinceLastReload = Date.now() - this._lastReload;
-    if (timeSinceLastReload > this._options.minReloadDelay) {
+    if (timeSinceLastReload < this._options.minReloadDelay) {
       // We set this here, so that if someone calls reload() again, then they'll
       // go to the else branch... Unless sufficient time has passed...
       this._lastReload = Date.now();
@@ -108,6 +107,8 @@ class ScopeResolver extends events.EventEmitter {
   }
 
   async _loadCache() {
+    debug("Loading clients and roles");
+
     // Load all clients
     let clients = [];
     await this._Client.scan({}, {
@@ -122,7 +123,7 @@ class ScopeResolver extends events.EventEmitter {
         // that guards it. This is important as it ensures that fixed-point
         // computation below will saturate cases where another guard matches it.
         let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
-        roles.push({roleId: roleId, scopes});
+        roles.push({roleId: role.roleId, scopes});
       }
     });
 
@@ -170,10 +171,11 @@ class ScopeResolver extends events.EventEmitter {
     this._clientCache = {};
     for (let client of clients) {
       let lastUsedDate = new Date(client.details.lastDateUsed);
+      var roleId = 'client-id:' + client.clientId;
       this._clientCache[client.clientId] = {
         clientId:       client.clientId,
         accessToken:    client.accessToken,
-        scopes:         _.find(roles, {roleId: 'client-id:' + clientId}) || [],
+        scopes:         (_.find(roles, {roleId}) || {}).scopes || [],
         // Note that lastUsedDate should be updated, if it's out-dated by more
         // then 6 hours (cheap way to know if it's been used recently)
         updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
@@ -207,7 +209,7 @@ class ScopeResolver extends events.EventEmitter {
       // For each role, expand if the role can be assumed, note we don't need to
       // traverse the scopes added... As we the fixed-point for all roles.
       for (let role of this._roleCache) {
-        if (ScopeResolver.grantsRole(scope, roleId)) {
+        if (ScopeResolver.grantsRole(scope, role.roleId)) {
           scopes = _.union(scopes, role.scopes);
         }
       }
@@ -218,7 +220,7 @@ class ScopeResolver extends events.EventEmitter {
   createSignatureValidator(options = {}) {
     let validator = base.API.createSignatureValidator({
       nonceManager: options.clientLoader,
-      clientLoader: (clientId) => {
+      clientLoader: async (clientId) => {
         let client = this._clientCache[clientId];
         if (!client) {
           throw new Error("Client with clientId: '" + clientId + "' not found");

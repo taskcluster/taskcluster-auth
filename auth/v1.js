@@ -89,7 +89,7 @@ api.declare({
     "Words..."
   ].join('\n')
 }, async function(req, res) {
-  let clientId = req.clientId;
+  let clientId = req.params.clientId;
 
   // Load client
   let client = await this.Client.load({clientId}, true);
@@ -125,6 +125,7 @@ api.declare({
     return;
   }
 
+  var accessToken = slugid.v4() + slugid.v4();
   let client = await this.Client.create({
     clientId:     clientId,
     description:  input.description,
@@ -211,10 +212,10 @@ api.declare({
   });
 
   // Publish message on pulse to clear caches...
-  await this.publisher.clientÚpdated({clientId});
+  await this.publisher.clientUpdated({clientId});
 
   // Create result with access token
-  let result = client.json();
+  let result = client.json(this.resovler);
   result.accessToken = client.accessToken;
   return res.reply(result);
 });
@@ -257,7 +258,7 @@ api.declare({
   });
 
   // Publish message on pulse to clear caches...
-  await this.publisher.clientÚpdated({clientId});
+  await this.publisher.clientUpdated({clientId});
 
   return res.reply(client.json());
 });
@@ -285,6 +286,8 @@ api.declare({
 
   await this.Client.remove({clientId}, true);
 
+  await this.publisher.clientDeleted({clientId});
+
   return res.status(200).send();
 });
 
@@ -305,7 +308,7 @@ api.declare({
   // Load all roles
   let roles = [];
   await this.Role.scan({}, {
-    handler: role => roles.push(role.json(this.resolver))
+    handler: role => roles.push(role.json())
   });
 
   res.reply(roles);
@@ -325,7 +328,7 @@ api.declare({
     "words..."
   ].join('\n')
 }, async function(req, res) {
-  let roleId = req.roleId;
+  let roleId = req.params.roleId;
 
   // Load role
   let role = await this.Role.load({roleId}, true);
@@ -334,7 +337,7 @@ api.declare({
     return res.status(404).json({message: "Role not found!"});
   }
 
-  res.reply(role.json(this.resolver));
+  res.reply(role.json());
 });
 
 
@@ -403,7 +406,7 @@ api.declare({
   await this.publisher.roleCreated({roleId});
 
   // Send result
-  return res.reply(role.json(this.resolver));
+  return res.reply(role.json());
 });
 
 
@@ -476,6 +479,8 @@ api.declare({
   }
 
   await this.Role.remove({roleId}, true);
+
+  await this.publisher.roleDeleted({roleId});
 
   return reply();
 });

@@ -15,4 +15,9 @@ module.exports = {
   // Slugid pattern, for when-ever that is useful
   "slugid-pattern":           "^[A-Za-z0-9_-]{8}[Q-T][A-Za-z0-9_-]" +
                               "[CGKOSWaeimquy26-][A-Za-z0-9_-]{10}[AQgw]$",
+
+  "message-version": {
+    enum: [1],
+    description: "Message version number"
+  }
 };

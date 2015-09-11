@@ -5,7 +5,7 @@ var assert    = require('assert');
 var exchanges = new base.Exchanges({
   title:      "Auth Pulse Exchanges",
   description: [
-    "The auth service, typically available at `auth.taskcluster.net`,"
+    "The auth service, typically available at `auth.taskcluster.net`",
     "is responsible for storing credentials, managing assignment of scopes,",
     "and validation of request signatures from other services.",
     "",
@@ -82,7 +82,7 @@ exchanges.declare({
 
 exchanges.declare({
   exchange:           'client-updated',
-  name:               'clientÚpdated',
+  name:               'clientUpdated',
   title:              "Client Updated Messages",
   description: [
     "Message that a new client has been updated."
