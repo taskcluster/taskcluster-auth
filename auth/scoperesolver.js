@@ -10,12 +10,16 @@ class ScopeResolver extends events.EventEmitter {
   constructor() {
     super();
 
-    // Mapping from clientId to client objects on the form
-    // {clientId, accessToken, scopes: [...], updateLastUsed: true || false}
-    this._clientCache   = {};
+    // List of client objects on the form:
+    // {clientId, accessToken, expandedScopes: [...], updateLastUsed}
+    this._clients       = [];
     // List of role objects on the form:
-    // {roleId: '...', scopes: [...]}
-    this._roleCache     = [];
+    // {roleId: '...', scopes: [...], expandedScopes: [...]}
+    this._roles         = [];
+
+    // Mapping from clientId to client objects from _clients:
+    // {clientId, accessToken, expandedScopes: [...], updateLastUsed}
+    this._clientCache   = {};
   }
 
   /**
@@ -28,14 +32,11 @@ class ScopeResolver extends events.EventEmitter {
    *   connection:          // PulseConnection object
    *   exchangeReference:   // reference for exchanges declared
    *   cacheExpiry:         // Time before clearing cache
-   *   minReloadDelay:      // Minimum delay between reloads
    * }
-   *
    */
   async setup(options) {
     options = _.defaults({}, options || {}, {
-      cacheExpiry:    10 * 60 * 1000,   // default to 10 min
-      minReloadDelay:  1 * 60 * 1000,   // default to 1 min
+      cacheExpiry:    20 * 60 * 1000,   // default to 20 min
     });
     assert(options.Client, "Expected options.Client");
     assert(options.Role, "Expected options.Role");
@@ -44,148 +45,170 @@ class ScopeResolver extends events.EventEmitter {
            "Expected options.connection to be a PulseConnection object");
     this._Client        = options.Client;
     this._Role          = options.Role;
-    this._reloadTimeout = null;
-    this._lastReload    = Date.now();
     this._options       = options;
 
     // Create authEvents client
     var AuthEvents = taskcluster.createClient(this._options.exchangeReference);
     var authEvents = new AuthEvents();
 
-    // Create PulseListener
-    this._listener = new taskcluster.PulseListener({
+    // Create PulseListeners
+    this._clientListener = new taskcluster.PulseListener({
+      connection:   options.connection,
+      reconnect:    true
+    });
+    this._roleListener = new taskcluster.PulseListener({
       connection:   options.connection,
       reconnect:    true
     });
 
-    // listen for events that causes us to reload
-    await this._listener.bind(authEvents.clientCreated());
-    await this._listener.bind(authEvents.clientUpdated());
-    await this._listener.bind(authEvents.clientDeleted());
-    await this._listener.bind(authEvents.roleCreated());
-    await this._listener.bind(authEvents.roleUpdated());
-    await this._listener.bind(authEvents.roleDeleted());
+    // listen for client events
+    await this._clientListener.bind(authEvents.clientCreated());
+    await this._clientListener.bind(authEvents.clientUpdated());
+    await this._clientListener.bind(authEvents.clientDeleted());
+    // listen for role events
+    await this._roleListener.bind(authEvents.roleCreated());
+    await this._roleListener.bind(authEvents.roleUpdated());
+    await this._roleListener.bind(authEvents.roleDeleted());
 
     // Reload when we get message
-    this._listener.on('message', () => this.reload());
-
-    // Start listening
-    await this._listener.resume();
+    this._clientListener.on('message', m => {
+      return this.reloadClient(m.payload.clientId);
+    });
+    this._roleListener.on('message', m => {
+      return this.reloadRole(m.payload.roleId);
+    });
 
     // Load initially
     await this.reload();
+
+    // Set this.reload() to run repeatedly
+    this._reloadIntervalHandle = setInterval(() => {
+      this.reload().catch(err => this.emit('error', err));
+    }, this._options.cacheExpiry);
+
+    // Start listening
+    await this._clientListener.resume();
+    await this._roleListener.resume();
+  }
+
+  async reloadClient(clientId) {
+    let client = await this._Client.load({clientId}, true);
+    // Always remove it
+    this._clients = this._clients.filter(c => c.clientId !== clientId);
+    // If a client was loaded add it back
+    if (client) {
+      // For reasoning on structure, see reload()
+      let lastUsedDate = new Date(client.details.lastDateUsed);
+      this._clients.push({
+        clientId:       client.clientId,
+        accessToken:    client.accessToken,
+        updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
+      });
+    }
+    this._computeFixedPoint();
+  }
+
+  async reloadRole(roleId) {
+    let role = await this._Role.load({roleId}, true);
+    // Always remove it
+    this._roles = this.roles.filter(r => r.roleId !== roleId);
+    // If a role was loaded add it back
+    if (role) {
+      // For reasoning on structure, see reload()
+      let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
+      this._roles.push({roleId: role.roleId, scopes});
+    }
+    this._computeFixedPoint();
   }
 
   async reload() {
-    // Clear whatever timeout is currently set
-    clearTimeout(this._reloadTimeout);
-    this._reloadTimeout = null;
-
-    // If we reload now, then by default we reload again after cacheExpiry
-    var reloadIn = this._options.cacheExpiry;
-
-    // If timeSinceLastReload is greater than minimum, then we reload now
-    var timeSinceLastReload = Date.now() - this._lastReload;
-    if (timeSinceLastReload < this._options.minReloadDelay) {
-      // We set this here, so that if someone calls reload() again, then they'll
-      // go to the else branch... Unless sufficient time has passed...
-      this._lastReload = Date.now();
-      await this._loadCache().catch(err => this.emit('error', err));
-    } else {
-      // If last reload wasn't long enough ago, we change reloadIn and then
-      // a new reload will be scheduled instead...
-      reloadIn = this._options.minReloadDelay - timeSinceLastReload;
-    }
-
-    // If there is not reloadTimeout we schedule one... This can happen if we
-    // have two calls to reload() shortly after each-other, then the second
-    // branch of the if-statement above can return faster than the blocking
-    // _loadCache() call...
-    if (!this._reloadTimeout) {
-      this._reloadTimeout = setTimeout(() => this.reload(), reloadIn);
-    }
-  }
-
-  async _loadCache() {
     debug("Loading clients and roles");
 
-    // Load all clients
+    // Load clients and roles in parallel
     let clients = [];
-    await this._Client.scan({}, {
-      handler: client => clients.push(client)
-    });
+    let roles   = [];
+    await Promise.all([
+      // Load all clients on a simplified form:
+      // {clientId, accessToken, updateLastUsed}
+      // _computeFixedPoint() will construct the `_clientCache` object
+      this._Client.scan({}, {
+        handler: client => {
+          let lastUsedDate = new Date(client.details.lastDateUsed);
+          clients.push({
+            clientId:       client.clientId,
+            accessToken:    client.accessToken,
+            // Note that lastUsedDate should be updated, if it's out-dated by more
+            // than 6 hours (cheap way to know if it's been used recently)
+            updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
+          });
+        }
+      }),
+      // Load all roles on a simplified form: {roleId, scopes}
+      // _computeFixedPoint() will later add the `expandedScopes` property
+      this._Role.scan({}, {
+        handler(role) {
+          // Ensure identity... Basically, make sure that role also has the scope
+          // that guards it. This is important as it ensures that fixed-point
+          // computation below will saturate cases where another guard matches it.
+          let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
+          roles.push({roleId: role.roleId, scopes});
+        }
+      })
+    ]);
 
-    // Load all roles on a simplified form: {roleId, scopes}
-    let roles = [];
-    await this._Role.scan({}, {
-      handler(role) {
-        // Ensure identity... Basically, make sure that role also has the scope
-        // that guards it. This is important as it ensures that fixed-point
-        // computation below will saturate cases where another guard matches it.
-        let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
-        roles.push({roleId: role.roleId, scopes});
-      }
-    });
 
-    // Ensure there is a role for each clientId
-    for (let {clientId} of clients) {
-      let roleId = 'client-id:' + clientId;
-      if (!_.some(roles, {roleId})) {
-        // Create the identity role for each clientId. This is important as we
-        // may have another role with the guard: "assume:client-id:<prefix>*"
-        // where <prefix> is a prefix of clientId, in which case the clientId
-        // will be able to assume scopes from the role.
-        roles.push({roleId, scopes: ['assume:' + roleId]});
-      }
+    // Set _roles and _clients at the same time and immediately call
+    // _computeFixedPoint, so anyone using the cache is using a consistent one.
+    this._roles = roles;
+    this._clients = clients;
+    this._computeFixedPoint();
+  }
+
+  /** Compute fixed point over this._roles, and construct _clientCache */
+  _computeFixedPoint() {
+    // Add initial value for expandedScopes for each role R
+    for (let role of this._roles) {
+      role.expandedScopes = _.clone(role.scopes);
     }
 
-    // Compute fixed-point of roles.scopes for each role R
-    for (let R of roles) {
+    // Compute fixed-point of roles.expandedScopes for each role R
+    for (let R of this._roles) {
       let isFixed = false;
       while (!isFixed) {
         isFixed = true; // assume we have fixed point
-        for (let role of roles) {
+        for (let role of this._roles) {
           // if R can assume role, then we union the scope sets, as there is a
           // finite number of strings here this will reach a fixed-point
           let test = (scope) => ScopeResolver.grantsRole(scope, role.roleId);
-          if (R.scopes.some(test)) {
-            let count = R.scopes.length;
-            R.scopes = _.union(R.scopes, role.scopes);
+          if (R.expandedScopes.some(test)) {
+            let count = R.expandedScopes.length;
+            R.expandedScopes = _.union(R.expandedScopes, role.expandedScopes);
             // Update isFixed, if scopes were added we need a extra round for
             // proof that we have a fixed point
-            isFixed = isFixed && count == R.scopes.length;
+            isFixed = isFixed && count == R.expandedScopes.length;
           }
         }
       }
     }
 
     // Compress scopes (removing scopes covered by other star scopes)
-    for(let role of roles) {
-      role.scopes = ScopeResolver.normalizeScopes(role.scopes);
+    for(let role of this._roles) {
+      role.expandedScopes = ScopeResolver.normalizeScopes(role.expandedScopes);
     }
-
-    // Set role cache
-    this._roleCache = roles;
 
     // Construct client cache
     this._clientCache = {};
-    for (let client of clients) {
-      let lastUsedDate = new Date(client.details.lastDateUsed);
-      var roleId = 'client-id:' + client.clientId;
-      this._clientCache[client.clientId] = {
-        clientId:       client.clientId,
-        accessToken:    client.accessToken,
-        scopes:         (_.find(roles, {roleId}) || {}).scopes || [],
-        // Note that lastUsedDate should be updated, if it's out-dated by more
-        // then 6 hours (cheap way to know if it's been used recently)
-        updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
-      };
+    for (let client of this._clients) {
+      var scopes = this.resolve(['assume:client-id:' + client.clientId]);
+      client.scopes = scopes; // for createSignatureValidator compatibility
+      client.expandedScopes = scopes;
+      this._clientCache[client.clientId] = client;
     }
   }
 
   /** Update lastDateUsed for a clientId */
   async _updateLastUsed(clientId) {
-    let client = await this._Client(clientId);
+    let client = await this._Client({clientId});
     await client.modify(client => {
       let lastUsedDate = new Date(client.details.lastDateUsed);
       if (lastUsedDate < taskcluster.fromNow('-6h')) {
@@ -208,7 +231,7 @@ class ScopeResolver extends events.EventEmitter {
 
       // For each role, expand if the role can be assumed, note we don't need to
       // traverse the scopes added... As we the fixed-point for all roles.
-      for (let role of this._roleCache) {
+      for (let role of this._roles) {
         if (ScopeResolver.grantsRole(scope, role.roleId)) {
           scopes = _.union(scopes, role.scopes);
         }
@@ -235,6 +258,10 @@ class ScopeResolver extends events.EventEmitter {
     return (req) => {
       return validator(req).then(result => {
         if (result.status === 'auth-success') {
+          // This is only necessary if authorizedScopes or temporary credentials
+          // was used, otherwise it should already be the fixed-point.
+          // We should refactor base.API.createSignatureValidator to facilitate
+          // this... But for now this is okay...
           result.scopes = this.resolve(result.scopes);
         }
         return result;

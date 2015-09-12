@@ -167,7 +167,10 @@ api.declare({
   }
 
   // Send pulse message
-  await this.publisher.clientCreated({clientId});
+  await Promise.all([
+    this.publisher.clientCreated({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
 
   // Create result with access token
   let result = client.json();
@@ -212,7 +215,10 @@ api.declare({
   });
 
   // Publish message on pulse to clear caches...
-  await this.publisher.clientUpdated({clientId});
+  await Promise.all([
+    this.publisher.clientUpdated({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
 
   // Create result with access token
   let result = client.json(this.resovler);
@@ -258,7 +264,10 @@ api.declare({
   });
 
   // Publish message on pulse to clear caches...
-  await this.publisher.clientUpdated({clientId});
+  await Promise.all([
+    this.publisher.clientUpdated({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
 
   return res.reply(client.json());
 });
@@ -286,7 +295,10 @@ api.declare({
 
   await this.Client.remove({clientId}, true);
 
-  await this.publisher.clientDeleted({clientId});
+  await Promise.all([
+    this.publisher.clientDeleted({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
 
   return res.status(200).send();
 });
@@ -403,7 +415,10 @@ api.declare({
   }
 
   // Send pulse message
-  await this.publisher.roleCreated({roleId});
+  await Promise.all([
+    this.publisher.roleCreated({roleId}),
+    this.resolver.reloadRole(roleId)
+  ]);
 
   // Send result
   return res.reply(role.json());
@@ -452,7 +467,10 @@ api.declare({
   });
 
   // Publish message on pulse to clear caches...
-  await this.publisher.roleÚpdated({roleId});
+  await Promise.all([
+    this.publisher.roleÚpdated({roleId}),
+    this.resolver.reloadRole(roleId)
+  ]);
 
   return res.reply(role.json());
 });
@@ -480,7 +498,10 @@ api.declare({
 
   await this.Role.remove({roleId}, true);
 
-  await this.publisher.roleDeleted({roleId});
+  await Promise.all([
+    this.publisher.roleDeleted({roleId}),
+    this.resolver.reloadRole(roleId)
+  ]);
 
   return reply();
 });
