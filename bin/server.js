@@ -5,8 +5,10 @@ var v1      = require('../routes/api/v1');
 var path    = require('path');
 var debug   = require('debug')('taskcluster-auth:bin:server');
 var Promise = require('promise');
-var persona = require('../auth/persona');
 var AWS     = require('aws-sdk-promise');
+
+//var persona = require('../auth/persona');
+var okta = require('../auth/okta');
 
 /** Launch server */
 var launch = function(profile) {
@@ -109,7 +111,15 @@ var launch = function(profile) {
 
 
     // Setup middleware and authentication
-    var ensureAuth = persona.setup(app, {
+    /*var ensureAuth = persona.setup(app, {
+      cookieSecret:   cfg.get('server:cookieSecret'),
+      viewFolder:     path.join(__dirname, '..', 'views'),
+      assetFolder:    path.join(__dirname, '..', 'assets'),
+      development:    cfg.get('server:development') === 'true',
+      publicUrl:      cfg.get('server:publicUrl')
+    });*/
+
+    okta.setup(app, {
       cookieSecret:   cfg.get('server:cookieSecret'),
       viewFolder:     path.join(__dirname, '..', 'views'),
       assetFolder:    path.join(__dirname, '..', 'assets'),
