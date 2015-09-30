@@ -38,7 +38,7 @@ helper.events = new base.testing.PulseTestReceiver(cfg.get('pulse'), mocha);
 var webServer = null;
 mocha.before(async () => {
   webServer = await server('test');
-  webServer.setTimeout(500);
+  webServer.setTimeout(1500);
 
   // Create client for working with API
   helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
