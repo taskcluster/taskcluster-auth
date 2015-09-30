@@ -99,7 +99,7 @@ Role.prototype.json = function() {
     created:        this.details.created,
     lastModified:   this.details.lastModified,
     scopes:         this.scopes,
-    expandedScopes: this.resolver.resolve()
+    expandedScopes: this.resolver.resolve(['assume:' + this.roleId])
   };
 };
 

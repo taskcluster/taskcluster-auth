@@ -22,7 +22,7 @@ var api = new base.API({
     table:      /^[A-Za-z][A-Za-z0-9]{2,62}$/,
 
     // Patterns for AWS
-    bucket:     /^[a-z0-9]{3,64}$/
+    bucket:     /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/
                 // we could allow "." too, but S3 buckets with dot in the name
                 // doesn't work well with HTTPS and virtual-style hosting.
                 // Hence, we shouldn't encourage people to use them
@@ -454,8 +454,9 @@ api.declare({
     return res.status(404).json({message: "role not found!"});
   }
 
-  // Check that requester has all the scopes added or removed
-  if (!req.satisfies([_.xor(client.scopes, input.scopes)])) {
+  // Check that requester has all the scopes added
+  let added = _.without.apply(_, [input.scopes].concat(role.scopes));
+  if (!req.satisfies([added])) {
     return;
   }
 
@@ -468,7 +469,7 @@ api.declare({
 
   // Publish message on pulse to clear caches...
   await Promise.all([
-    this.publisher.roleÚpdated({roleId}),
+    this.publisher.roleUpdated({roleId}),
     this.resolver.reloadRole(roleId)
   ]);
 
@@ -503,7 +504,7 @@ api.declare({
     this.resolver.reloadRole(roleId)
   ]);
 
-  return reply();
+  return res.reply();
 });
 
 
@@ -566,12 +567,14 @@ api.declare({
         lastDateUsed: new Date().toJSON(),
         lastRotated:  new Date().toJSON()
       }
-    }, true);
+    }, true).then(client => {
+      return this.publisher.clientCreated({clientId: client.clientId});
+    });
   }));
 
   // Create a role with scopes for each client
   await Promise.all(input.map(input => {
-    return this.Client.create({
+    return this.Role.create({
       roleId:       'client-id:' + input.clientId,
       description:  "### Imported: " + input.name + "\n\n" + input.description,
       scopes:       input.scopes,
@@ -579,8 +582,13 @@ api.declare({
         created:      new Date().toJSON(),
         lastModified: new Date().toJSON()
       }
-    }, true);
+    }, true).then(role => {
+      return this.publisher.roleCreated({roleId: role.roleId});
+    });
   }));
+
+  // Reload everything in ScopeResolver
+  await this.resolver.reload();
 
   return res.reply({});
 });

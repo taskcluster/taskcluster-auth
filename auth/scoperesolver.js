@@ -111,11 +111,14 @@ class ScopeResolver extends events.EventEmitter {
   async reloadRole(roleId) {
     let role = await this._Role.load({roleId}, true);
     // Always remove it
-    this._roles = this.roles.filter(r => r.roleId !== roleId);
+    this._roles = this._roles.filter(r => r.roleId !== roleId);
     // If a role was loaded add it back
     if (role) {
-      // For reasoning on structure, see reload()
-      let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
+      let scopes = role.scopes;
+      if (!role.roleId.endsWith('*')) {
+        // For reasoning on structure, see reload()
+        scopes = _.union(scopes, ['assume:' + role.roleId]);
+      }
       this._roles.push({roleId: role.roleId, scopes});
     }
     this._computeFixedPoint();
@@ -147,10 +150,18 @@ class ScopeResolver extends events.EventEmitter {
       // _computeFixedPoint() will later add the `expandedScopes` property
       this._Role.scan({}, {
         handler(role) {
-          // Ensure identity... Basically, make sure that role also has the scope
-          // that guards it. This is important as it ensures that fixed-point
-          // computation below will saturate cases where another guard matches it.
-          let scopes = _.union(role.scopes, ['assume:' + role.roleId]);
+          let scopes = role.scopes;
+          if (!role.roleId.endsWith('*')) {
+            // Ensure identity, if role isn't a prefix pattern. Obviously,
+            // 'assume:ab' which matches 'assume:a*' doesn't have 'assume:a*'
+            // by the identity relation. But for non-prefix patterns, the
+            // identify relation implies that you have 'assume:<roleId>'.
+            // This speeds up fixed-point computation, and means that if you
+            // have a match without any *, then you can look up the role, and
+            // not have to worry about any prefix patterns that may also match
+            // as they are already saturated.
+            scopes = _.union(scopes, ['assume:' + role.roleId]);
+          }
           roles.push({roleId: role.roleId, scopes});
         }
       })
