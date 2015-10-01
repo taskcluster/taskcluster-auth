@@ -167,7 +167,6 @@ suite('api (roles)', function() {
     ].sort());
   });
 
-
   test('deleteRole', async() => {
     await helper.events.listenFor('e1', helper.authEvents.roleDeleted());
 

@@ -266,7 +266,7 @@ class ScopeResolver extends events.EventEmitter {
       // traverse the scopes added... As we the fixed-point for all roles.
       for (let role of this._roles) {
         if (ScopeResolver.grantsRole(scope, role.roleId)) {
-          scopes = _.union(scopes, role.scopes);
+          scopes = _.union(scopes, role.expandedScopes);
         }
       }
     }

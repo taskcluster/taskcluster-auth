@@ -1,8 +1,8 @@
 module.exports = {
   // Component specific configuration
   auth: {
-    clientTableName:      'TestClients2',
-    rolesTableName:       'TestRoles2',
+    clientTableName:      'TestClients25',
+    rolesTableName:       'TestRoles25',
     tableSigningKey:      'not-a-secret-so-you-cant-guess-it',
     tableCryptoKey:       'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 
