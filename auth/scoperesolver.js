@@ -4,6 +4,7 @@ var taskcluster = require('taskcluster-client');
 var events      = require('events');
 var base        = require('taskcluster-base');
 var debug       = require('debug')('auth:ScopeResolver');
+var Promise     = require('promise');
 
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
@@ -11,15 +12,24 @@ class ScopeResolver extends events.EventEmitter {
     super();
 
     // List of client objects on the form:
-    // {clientId, accessToken, expandedScopes: [...], updateLastUsed}
-    this._clients       = [];
+    // {
+    //    clientId, accessToken,
+    //    expandedScopes: [...],        // Scopes (including indirect scopes)
+    //    updateLastUsed: true | false  // true, if lastUsed should be updated
+    // }
+    this._clients = [];
     // List of role objects on the form:
     // {roleId: '...', scopes: [...], expandedScopes: [...]}
-    this._roles         = [];
+    this._roles = [];
 
-    // Mapping from clientId to client objects from _clients:
-    // {clientId, accessToken, expandedScopes: [...], updateLastUsed}
-    this._clientCache   = {};
+    // Mapping from clientId to client objects from _clients,
+    // _clientCache[clientId] === this._clients[i] === {     // for some i
+    //   clientId, accessToken, expandedScopes: [...], updateLastUsed
+    // };
+    this._clientCache = {};
+
+    // Promise that we're done reloading, used to serialize reload operations
+    this._reloadDone = Promise.resolve();
   }
 
   /**
@@ -91,120 +101,132 @@ class ScopeResolver extends events.EventEmitter {
     await this._roleListener.resume();
   }
 
-  async reloadClient(clientId) {
-    let client = await this._Client.load({clientId}, true);
-    // Always remove it
-    this._clients = this._clients.filter(c => c.clientId !== clientId);
-    // If a client was loaded add it back
-    if (client) {
-      // For reasoning on structure, see reload()
-      let lastUsedDate = new Date(client.details.lastDateUsed);
-      this._clients.push({
-        clientId:       client.clientId,
-        accessToken:    client.accessToken,
-        updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
-      });
-    }
-    this._computeFixedPoint();
+  /**
+   * Execute async `reloader` function, after any earlier async `reloader`
+   * function given this function has completed. Ensuring that the `reloader`
+   * functions are executed in serial.
+   */
+  _syncReload(reloader) {
+    return this._reloadDone = this._reloadDone.catch(() => {}).then(reloader);
   }
 
-  async reloadRole(roleId) {
-    let role = await this._Role.load({roleId}, true);
-    // Always remove it
-    this._roles = this._roles.filter(r => r.roleId !== roleId);
-    // If a role was loaded add it back
-    if (role) {
-      let scopes = role.scopes;
-      if (!role.roleId.endsWith('*')) {
+  reloadClient(clientId) {
+    return this._syncReload(async () => {
+      let client = await this._Client.load({clientId}, true);
+      // Always remove it
+      this._clients = this._clients.filter(c => c.clientId !== clientId);
+      // If a client was loaded add it back
+      if (client) {
         // For reasoning on structure, see reload()
-        scopes = _.union(scopes, ['assume:' + role.roleId]);
+        let lastUsedDate = new Date(client.details.lastDateUsed);
+        this._clients.push({
+          clientId:       client.clientId,
+          accessToken:    client.accessToken,
+          updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
+        });
       }
-      this._roles.push({roleId: role.roleId, scopes});
-    }
-    this._computeFixedPoint();
+      this._computeFixedPoint();
+    });
   }
 
-  async reload() {
-    debug("Loading clients and roles");
-
-    // Load clients and roles in parallel
-    let clients = [];
-    let roles   = [];
-    await Promise.all([
-      // Load all clients on a simplified form:
-      // {clientId, accessToken, updateLastUsed}
-      // _computeFixedPoint() will construct the `_clientCache` object
-      this._Client.scan({}, {
-        handler: client => {
-          let lastUsedDate = new Date(client.details.lastDateUsed);
-          clients.push({
-            clientId:       client.clientId,
-            accessToken:    client.accessToken,
-            // Note that lastUsedDate should be updated, if it's out-dated by more
-            // than 6 hours (cheap way to know if it's been used recently)
-            updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
-          });
+  reloadRole(roleId) {
+    return this._syncReload(async () => {
+      let role = await this._Role.load({roleId}, true);
+      // Always remove it
+      this._roles = this._roles.filter(r => r.roleId !== roleId);
+      // If a role was loaded add it back
+      if (role) {
+        let scopes = role.scopes;
+        if (!role.roleId.endsWith('*')) {
+          // For reasoning on structure, see reload()
+          scopes = _.union(scopes, ['assume:' + role.roleId]);
         }
-      }),
-      // Load all roles on a simplified form: {roleId, scopes}
-      // _computeFixedPoint() will later add the `expandedScopes` property
-      this._Role.scan({}, {
-        handler(role) {
-          let scopes = role.scopes;
-          if (!role.roleId.endsWith('*')) {
-            // Ensure identity, if role isn't a prefix pattern. Obviously,
-            // 'assume:ab' which matches 'assume:a*' doesn't have 'assume:a*'
-            // by the identity relation. But for non-prefix patterns, the
-            // identify relation implies that you have 'assume:<roleId>'.
-            // This speeds up fixed-point computation, and means that if you
-            // have a match without any *, then you can look up the role, and
-            // not have to worry about any prefix patterns that may also match
-            // as they are already saturated.
-            scopes = _.union(scopes, ['assume:' + role.roleId]);
+        this._roles.push({roleId: role.roleId, scopes});
+      }
+      this._computeFixedPoint();
+    });
+  }
+
+  reload() {
+    return this._syncReload(async () => {
+      debug("Loading clients and roles");
+
+      // Load clients and roles in parallel
+      let clients = [];
+      let roles   = [];
+      await Promise.all([
+        // Load all clients on a simplified form:
+        // {clientId, accessToken, updateLastUsed}
+        // _computeFixedPoint() will construct the `_clientCache` object
+        this._Client.scan({}, {
+          handler: client => {
+            let lastUsedDate = new Date(client.details.lastDateUsed);
+            clients.push({
+              clientId:       client.clientId,
+              accessToken:    client.accessToken,
+              // Note that lastUsedDate should be updated, if it's out-dated by
+              // more than 6 hours.
+              // (cheap way to know if it's been used recently)
+              updateLastUsed: lastUsedDate < taskcluster.fromNow('-6h')
+            });
           }
-          roles.push({roleId: role.roleId, scopes});
-        }
-      })
-    ]);
+        }),
+        // Load all roles on a simplified form: {roleId, scopes}
+        // _computeFixedPoint() will later add the `expandedScopes` property
+        this._Role.scan({}, {
+          handler(role) {
+            let scopes = role.scopes;
+            if (!role.roleId.endsWith('*')) {
+              // Ensure identity, if role isn't a prefix pattern. Obviously,
+              // 'assume:ab' which matches 'assume:a*' doesn't have 'assume:a*'
+              // by the identity relation. But for non-prefix patterns, the
+              // identify relation implies that you have 'assume:<roleId>'.
+              // This speeds up fixed-point computation, and means that if you
+              // have a match without any *, then you can look up the role, and
+              // not have to worry about any prefix patterns that may also match
+              // as they are already saturated.
+              scopes = _.union(scopes, ['assume:' + role.roleId]);
+            }
+            roles.push({roleId: role.roleId, scopes});
+          }
+        })
+      ]);
 
-
-    // Set _roles and _clients at the same time and immediately call
-    // _computeFixedPoint, so anyone using the cache is using a consistent one.
-    this._roles = roles;
-    this._clients = clients;
-    this._computeFixedPoint();
+      // Set _roles and _clients at the same time and immediately call
+      // _computeFixedPoint, so anyone using the cache is using a consistent one
+      this._roles = roles;
+      this._clients = clients;
+      this._computeFixedPoint();
+    });
   }
 
   /** Compute fixed point over this._roles, and construct _clientCache */
   _computeFixedPoint() {
     // Add initial value for expandedScopes for each role R
-    for (let role of this._roles) {
-      role.expandedScopes = _.clone(role.scopes);
+    for (let R of this._roles) {
+      R.expandedScopes = _.clone(R.scopes);
     }
 
     // Compute fixed-point of roles.expandedScopes for each role R
     for (let R of this._roles) {
-      let isFixed = false;
-      while (!isFixed) {
-        isFixed = true; // assume we have fixed point
+      let count = 0;
+      while (count !== R.expandedScopes.length) {
+        // Count number of scopes, we don't add any we have fixed point
+        count = R.expandedScopes.length;
         for (let role of this._roles) {
           // if R can assume role, then we union the scope sets, as there is a
           // finite number of strings here this will reach a fixed-point
           let test = (scope) => ScopeResolver.grantsRole(scope, role.roleId);
           if (R.expandedScopes.some(test)) {
-            let count = R.expandedScopes.length;
             R.expandedScopes = _.union(R.expandedScopes, role.expandedScopes);
-            // Update isFixed, if scopes were added we need a extra round for
-            // proof that we have a fixed point
-            isFixed = isFixed && count == R.expandedScopes.length;
           }
         }
       }
     }
 
     // Compress scopes (removing scopes covered by other star scopes)
-    for(let role of this._roles) {
-      role.expandedScopes = ScopeResolver.normalizeScopes(role.expandedScopes);
+    for(let R of this._roles) {
+      R.expandedScopes = ScopeResolver.normalizeScopes(R.expandedScopes);
     }
 
     // Construct client cache
@@ -304,7 +326,10 @@ class ScopeResolver extends events.EventEmitter {
     });
   }
 
-  /** Determine if scope grants a roleId, and allows owner to assume the role */
+  /**
+   * Determine if scope grants a roleId, and allows owner to assume the role.
+   * This is equivalent to: `scopeMatch([["assume:" + roleId]], scopes)`
+   */
   static grantsRole(scope, roleId) {
     // We have 3 rules (A), (B) and (C) by which a scope may match a role.
     // This implementation focuses on being reasonably fast by avoiding
@@ -317,19 +342,28 @@ class ScopeResolver extends events.EventEmitter {
         return true;
       }
 
-      // B) guard is on the form 'assume:<prefix>*' and we have a scope on the
+      // B) role is on the form 'assume:<prefix>*' and we have a scope on the
       //    form 'assume:<prefix>...'. This is special rule, assigning
       //    special meaning to '*' when used at the end of a roleId.
       if (roleId.endsWith('*') && scope.slice(7).startsWith(roleId.slice(0, -1))) {
         return true;
       }
+
+      // C) We have scope as 'assume:<prefix>*' and '<prefix>' is a prefix of
+      // roleId, this is similar to rule (A) relying on the normal scope
+      // satisfiability. Note, this is only half of role (C).
+      if (scope.endsWith('*') && roleId.startsWith(scope.slice(7, -1))) {
+        return true;
+      }
     }
 
-    // C) We have scope as '<prefix>*' and '<prefix>' is a prefix of guard, this
-    //    is similar to rule (A) relying on the normal scope satisfiability.
-    if (scope.endsWith('*') && roleId.startsWith(scope.slice(7, -1))) {
+    // C) We have scope as '<prefix>*' and '<prefix>' is a prefix of 'assume',
+    // then similar to rule (A) relying on the normal scope satisfiability we
+    // have that any role is granted.
+    if (scope.endsWith('*') && 'assume'.startsWith(scope.slice(0, -1))) {
       return true;
     }
+
     return false;
   }
 }

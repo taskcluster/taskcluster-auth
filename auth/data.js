@@ -91,7 +91,7 @@ var Role = base.Entity.configure({
   context:          ['resolver']
 });
 
-/** Get JSON representation of client */
+/** Get JSON representation of a role */
 Role.prototype.json = function() {
   return {
     roleId:         this.roleId,

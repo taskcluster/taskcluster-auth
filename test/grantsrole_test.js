@@ -31,6 +31,10 @@ suite("ScopeResolver (grantsRole)", () => {
       role:     'task-run-id:*',
       result:   true
     }, {
+      scope:    'queue:*',
+      role:     'task-run-id:*',
+      result:   false
+    }, {
       // cases with assume:*
       scope:    'assume:*',
       role:     'client-id:queue',
