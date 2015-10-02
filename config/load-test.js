@@ -2,8 +2,8 @@ module.exports = {
   // Component specific configuration
   auth: {
     // Azure table for the client table
-    clientTableName:                'LoadTestClients',
-    rolesTableName:                 'LoadTestRoles',
+    clientTableName:                'LoadTestClients1',
+    rolesTableName:                 'LoadTestRoles1',
 
     // Publish references and schemas
     publishMetaData:                'false',
