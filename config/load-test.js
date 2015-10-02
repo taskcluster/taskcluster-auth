@@ -3,6 +3,7 @@ module.exports = {
   auth: {
     // Azure table for the client table
     clientTableName:                'LoadTestClients',
+    rolesTableName:                 'LoadTestRoles',
 
     // Publish references and schemas
     publishMetaData:                'false',
