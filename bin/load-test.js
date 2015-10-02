@@ -113,7 +113,7 @@ var launch = async function(profile) {
       }, 3 * 60 * 1000);
       while(true) {
         await auth.authenticateHawk(reqForVerification).then(result => {
-          assert(result.error === false, "Validation error");
+          assert(result.status === 'auth-success', "Validation error");
           success += 1;
         }).catch(err => {
           failed += 1;
