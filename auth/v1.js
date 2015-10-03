@@ -229,7 +229,7 @@ api.declare({
 
 /** Update client */
 api.declare({
-  method:     'patch',
+  method:     'post',
   route:      '/clients/:clientId',
   name:       'updateClient',
   input:      'create-client-request.json#',
@@ -427,7 +427,7 @@ api.declare({
 
 /** Update role */
 api.declare({
-  method:     'patch',
+  method:     'post',
   route:      '/roles/:roleId',
   name:       'updateRole',
   input:      'create-role-request.json#',
