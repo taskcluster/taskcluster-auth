@@ -9,7 +9,50 @@ var _           = require('lodash');
 var api = new base.API({
   title:      "Authentication API",
   description: [
-    "Authentication related API end-points for taskcluster."
+    "Authentication related API end-points for TaskCluster and related",
+    "services. These API end-points are of interest if you wish to:",
+    "  * Authenticate request signed with TaskCluster credentials,",
+    "  * Manage clients and roles,",
+    "  * Inspect or audit clients and roles,",
+    "  * Gain access to various services guarded by this API.",
+    "",
+    "### Clients",
+    "The authentication service manages _clients_, at a high-level each client",
+    "consists of a `clientId`, an `accessToken`, expiration and description.",
+    "The `clientId` and `accessToken` can be used for authentication when",
+    "calling TaskCluster APIs.",
+    "",
+    "Each client is assigned a single scope on the form:",
+    "`assume:client-id:<clientId>`, this scopes doesn't really do much on its",
+    "own. But when you dive into the roles section you'll see that you can",
+    "create a role: `client-id:<clientId>` that assigns scopes to the client.",
+    "This way it's easy to audit all scope assignments, by only listing roles.",
+    "",
+    "### Roles",
+    "A _role_ consists of a `roleId`, a set of scopes and a description.",
+    "Each role constitutes a simple _expansion rule_ that says if you have",
+    "the scope: `assume:<roleId>` you get the set of scopes the role has.",
+    "Think of the `assume:<roleId>` as a scope that allows a client to assume",
+    "a role.",
+    "",
+    "As in scopes the `*` kleene star also have special meaning if it is",
+    "located at the end of a `roleId`. If you have a role with the following",
+    "`roleId`: `my-prefix*`, then any client which has a scope staring with",
+    "`assume:my-prefix` will be allowed to assume the role.",
+    "",
+    "As previously mentioned each client gets the scope:",
+    "`assume:client-id:<clientId>`, it trivially follows that you can create a",
+    "role with the `roleId`: `client-id:<clientId>` to assign additional",
+    "scopes to a client. You can also create a role `client-id:user-*`",
+    "if you wish to assign a set of scopes to all clients whose `clientId`",
+    "starts with `user-`.",
+    "",
+    "### Guarded Services",
+    "The authentication service also has API end-points for delegating access",
+    "to some guarded service such as AWS S3, or Azure Table Storage.",
+    "Generally, we add API end-points to this server when we wish to use",
+    "TaskCluster credentials to grant access to a third-party service used",
+    "by many TaskCluster components.",
   ].join('\n'),
   schemaPrefix: 'http://schemas.taskcluster.net/auth/v1/',
   params: {
@@ -59,10 +102,10 @@ api.declare({
   name:       'listClients',
   input:      undefined,
   output:     'list-clients-response.json#',
-  stability:  'experimental',
+  stability:  'stable',
   title:      "List Clients",
   description: [
-    "**Will change when paging is added**"
+    "Get a list of all clients."
   ].join('\n')
 }, async function(req, res) {
 
@@ -84,9 +127,9 @@ api.declare({
   input:      undefined,
   stability:  'stable',
   output:     'get-client-response.json#',
-  title:      "Words...",
+  title:      "Get Client",
   description: [
-    "Words..."
+    "Get information about a single client."
   ].join('\n')
 }, async function(req, res) {
   let clientId = req.params.clientId;
@@ -114,7 +157,16 @@ api.declare({
   stability:  'stable',
   title:      "Create Client",
   description: [
-    "Words..."
+    "Create a new client and get the `accessToken` for this client.",
+    "You should store the `accessToken` from this API call as there is no",
+    "other way to retrieve it.",
+    "",
+    "If you loose the `accessToken` you can call `resetAccessToken` to reset",
+    "it, and a new `accessToken` will be returned, but you cannot retrieve the",
+    "current `accessToken`.",
+    "",
+    "If a client with the same `clientId` already exists this operation will",
+    "fail. Use `updateClient` if you wish to update an existing client.",
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
@@ -191,7 +243,12 @@ api.declare({
   stability:  'stable',
   title:      "Reset `accessToken`",
   description: [
-    "Words..."
+    "Reset a clients `accessToken`, this will revoke the existing",
+    "`accessToken`, generate a new `accessToken` and return it from this",
+    "call.",
+    "",
+    "There is no way to retrieve an existing `accessToken`, so if you loose it",
+    "you must reset the accessToken to acquire it again.",
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
@@ -210,7 +267,7 @@ api.declare({
 
   // Reset accessToken
   await client.modify(client => {
-    client.accessToken = slugid.nice() + slugid.v4();
+    client.accessToken = slugid.v4() + slugid.v4();
     client.details.lastRotated = new Date().toJSON();
   });
 
@@ -239,7 +296,9 @@ api.declare({
   stability:  'stable',
   title:      "Update Client",
   description: [
-    "Words..."
+    "Update an exisiting client. This is really only useful for changing the",
+    "description and expiration, as you won't be allowed to the `clientId`",
+    "or `accessToken`.",
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
@@ -283,7 +342,8 @@ api.declare({
   stability:  'stable',
   title:      "Delete Client",
   description: [
-    "Words..."
+    "Delete a client, please note that any roles related to this client must",
+    "be deleted independently.",
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
@@ -311,10 +371,11 @@ api.declare({
   name:       'listRoles',
   input:      undefined,
   output:     'list-roles-response.json#',
-  stability:  'experimental',
+  stability:  'stable',
   title:      "List Roles",
   description: [
-    "**Will change when paging is added**"
+    "Get a list of all roles, each role object also includes the list of",
+    "scopes it expands to."
   ].join('\n')
 }, async function(req, res) {
   // Load all roles
@@ -337,7 +398,8 @@ api.declare({
   stability:  'stable',
   title:      "Get Role",
   description: [
-    "words..."
+    "Get information about a single role, including the set of scopes that the",
+    "role expands to.",
   ].join('\n')
 }, async function(req, res) {
   let roleId = req.params.roleId;
@@ -365,7 +427,8 @@ api.declare({
   stability:  'stable',
   title:      "Create Role",
   description: [
-    "words..."
+    "Create a new role. If there already exists a role with the same `roleId`",
+    "this operation will fail. Use `updateRole` to modify an existing role",
   ].join('\n')
 }, async function(req, res) {
   let roleId    = req.params.roleId;
@@ -437,7 +500,7 @@ api.declare({
   stability:  'stable',
   title:      "Update Role",
   description: [
-    "words..."
+    "Update existing role."
   ].join('\n')
 }, async function(req, res) {
   let roleId    = req.params.roleId;
@@ -487,7 +550,8 @@ api.declare({
   stability:  'stable',
   title:      "Delete Role",
   description: [
-    "words..."
+    "Delete a role. This operation will succeed regardless of whether or not",
+    "the role exists."
   ].join('\n')
 }, async function(req, res) {
   let roleId  = req.params.roleId;
