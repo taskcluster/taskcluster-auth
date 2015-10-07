@@ -23,7 +23,7 @@ var api = new base.API({
     "calling TaskCluster APIs.",
     "",
     "Each client is assigned a single scope on the form:",
-    "`assume:client-id:<clientId>`, this scopes doesn't really do much on its",
+    "`assume:client-id:<clientId>`, this scope doesn't really do much on its",
     "own. But when you dive into the roles section you'll see that you can",
     "create a role: `client-id:<clientId>` that assigns scopes to the client.",
     "This way it's easy to audit all scope assignments, by only listing roles.",
