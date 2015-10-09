@@ -6,6 +6,7 @@ var base        = require('taskcluster-base');
 var debug       = require('debug')('auth:ScopeResolver');
 var Promise     = require('promise');
 
+
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
   constructor() {
@@ -205,28 +206,38 @@ class ScopeResolver extends events.EventEmitter {
     // Add initial value for expandedScopes for each role R
     for (let R of this._roles) {
       R.expandedScopes = _.clone(R.scopes);
+      R.impliedRoles = []; // roles that R can assume
+      R.assumedBy = []; // roles that can assume R
     }
 
-    // Compute fixed-point of roles.expandedScopes for each role R
+    // Propogate that owner can assume target
+    let propagate = (target, owner) => {
+      // If target is already granted by owner, then no need to propagate
+      if (_.includes(target.assumedBy, owner)) {
+        return;
+      }
+      target.assumedBy.push(owner);
+      owner.impliedRoles.push(target);
+      for (let parent of owner.assumedBy) {
+        propagate(target, parent);
+      }
+    };
+
     for (let R of this._roles) {
-      let count = 0;
-      while (count !== R.expandedScopes.length) {
-        // Count number of scopes, we don't add any we have fixed point
-        count = R.expandedScopes.length;
-        for (let role of this._roles) {
-          // if R can assume role, then we union the scope sets, as there is a
-          // finite number of strings here this will reach a fixed-point
-          let test = (scope) => ScopeResolver.grantsRole(scope, role.roleId);
-          if (R.expandedScopes.some(test)) {
-            R.expandedScopes = _.union(R.expandedScopes, role.expandedScopes);
-          }
+      for (let role of this._roles) {
+        let test = (scope) => ScopeResolver.grantsRole(scope, role.roleId);
+        if (role !== R && R.scopes.some(test)) {
+          propagate(role, R);
         }
       }
     }
 
-    // Compress scopes (removing scopes covered by other star scopes)
-    for(let R of this._roles) {
-      R.expandedScopes = ScopeResolver.normalizeScopes(R.expandedScopes);
+    for (let R of this._roles) {
+      R.expandedScopes = ScopeResolver.normalizeScopes(
+        _.flatten(R.impliedRoles.map(r => r.scopes).concat(R.scopes))
+      );
+      R.impliedRoles = null;
+      R.assumedBy = null;
     }
 
     // Construct client cache
@@ -308,20 +319,21 @@ class ScopeResolver extends events.EventEmitter {
    * level of authority.
    */
   static normalizeScopes(scopes) {
+    //return scopes;
     // Filter out any duplicate scopes (so we only have unique strings)
     scopes = _.uniq(scopes);
     // Filter out scopes that are covered by some other scope
     return scopes.filter(scope => {
-      return !scopes.some(other => {
+      return scopes.every(other => {
         // If `scope` is `other`, then we can't filter it! It has to be
         // strictly greater than (otherwise scopes would filter themselves)
         if (other === scope) {
-          return false;
+          return true;
         }
         // But if the other one ends with '*' and `scope` starts with its
         // prefix then `other` is strictly greater than `scope` and we filter
         // out `scope`.
-        return other.endsWith('*') && scope.startsWith(other.slice(0, -1));
+        return !(other.endsWith('*') && scope.startsWith(other.slice(0, -1)));
       });
     });
   }
