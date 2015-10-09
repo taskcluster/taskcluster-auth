@@ -306,16 +306,17 @@ suite('api (role logic)', function() {
     ],
   });
 
-  test("indirect roles works (with 25 roles)", {
+  const N = 25;
+  test("indirect roles works (with " + N + " roles)", {
     roles: [
       {
         roleId: 'client-id:big-test-client',
         scopes: ['assume:test-role-0']
       }, {
-        roleId: 'test-role-25',
+        roleId: 'test-role-' + N,
         scopes: ['special-scope']
       }
-    ].concat(_.range(25).map(i => {
+    ].concat(_.range(N).map(i => {
       return {
         roleId: 'test-role-' + i,
         scopes: ['assume:test-role-' + (i + 1)]
@@ -326,7 +327,7 @@ suite('api (role logic)', function() {
         clientId:   'big-test-client',
         includes: [
           'special-scope'
-        ].concat(_.range(25 + 1).map(i => 'assume:test-role-' + i)),
+        ].concat(_.range(N + 1).map(i => 'assume:test-role-' + i)),
         excludes: ['*']
       }
     ],
