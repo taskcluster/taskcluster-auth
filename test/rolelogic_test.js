@@ -93,7 +93,7 @@ suite('api (role logic)', function() {
     });
   };
 
-/*
+
   test("assume:client-id:* works", {
     roles: [
       {
