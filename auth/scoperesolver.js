@@ -5,7 +5,7 @@ var events      = require('events');
 var base        = require('taskcluster-base');
 var debug       = require('debug')('auth:ScopeResolver');
 var Promise     = require('promise');
-
+var dfa         = require('./dfa');
 
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
@@ -203,42 +203,9 @@ class ScopeResolver extends events.EventEmitter {
 
   /** Compute fixed point over this._roles, and construct _clientCache */
   _computeFixedPoint() {
-    // Add initial value for expandedScopes for each role R
-    for (let R of this._roles) {
-      R.expandedScopes = _.clone(R.scopes);
-      R.impliedRoles = []; // roles that R can assume
-      R.assumedBy = []; // roles that can assume R
-    }
-
-    // Propogate that owner can assume target
-    let propagate = (target, owner) => {
-      // If target is already granted by owner, then no need to propagate
-      if (_.includes(target.assumedBy, owner)) {
-        return;
-      }
-      target.assumedBy.push(owner);
-      owner.impliedRoles.push(target);
-      for (let parent of owner.assumedBy) {
-        propagate(target, parent);
-      }
-    };
-
-    for (let R of this._roles) {
-      for (let role of this._roles) {
-        let test = (scope) => ScopeResolver.grantsRole(scope, role.roleId);
-        if (role !== R && R.scopes.some(test)) {
-          propagate(role, R);
-        }
-      }
-    }
-
-    for (let R of this._roles) {
-      R.expandedScopes = ScopeResolver.normalizeScopes(
-        _.flatten(R.impliedRoles.map(r => r.scopes).concat(R.scopes))
-      );
-      R.impliedRoles = null;
-      R.assumedBy = null;
-    }
+    //console.time("_computeFixedPoint");
+    this._resolver = dfa.computeFixedPoint(this._roles);
+    //console.timeEnd("_computeFixedPoint");
 
     // Construct client cache
     this._clientCache = {};
@@ -266,22 +233,14 @@ class ScopeResolver extends events.EventEmitter {
    * authorized roles.
    */
   resolve(scopes) {
+    let granted = dfa.sortScopesForMerge(_.clone(scopes));
     for (let scope of scopes) {
-      // Skip scopes that doesn't cover "assume:", this is just a quick
-      // under-approximation
-      if (!scope.startsWith('assume:') && !scope.endsWith('*')) {
-        continue;
-      }
-
-      // For each role, expand if the role can be assumed, note we don't need to
-      // traverse the scopes added... As we the fixed-point for all roles.
-      for (let role of this._roles) {
-        if (ScopeResolver.grantsRole(scope, role.roleId)) {
-          scopes = _.union(scopes, role.expandedScopes);
-        }
+      let found = this._resolver(scope);
+      if (found.length > 0) {
+        granted = dfa.mergeScopeSets(granted, found);
       }
     }
-    return ScopeResolver.normalizeScopes(scopes);
+    return granted;
   }
 
   createSignatureValidator(options = {}) {

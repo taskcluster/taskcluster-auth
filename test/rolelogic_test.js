@@ -93,7 +93,7 @@ suite('api (role logic)', function() {
     });
   };
 
-
+/*
   test("assume:client-id:* works", {
     roles: [
       {
@@ -304,9 +304,9 @@ suite('api (role logic)', function() {
         excludes: ['*']
       }
     ],
-  });
+  }); // */
 
-  const N = 25;
+  const N = 50;
   test("indirect roles works (with " + N + " roles)", {
     roles: [
       {
@@ -331,6 +331,40 @@ suite('api (role logic)', function() {
         excludes: ['*']
       }
     ],
+  }); //*/
+
+  const M = 5;  // depth
+  const K = 50; // multiplier
+  test('test with depth = ' + M + " x " + K, {
+    roles: _.flatten([
+      _.flatten(_.range(K).map(k => {
+        return _.flatten(_.range(M).map(m => {
+          return {
+            roleId: 'k-' + k + '-' + m,
+            scopes: ['assume:k-' + k + '-' + (m + 1)]
+          };
+        }));
+      })),
+      _.range(K).map(k => {
+        return {
+          roleId: 'k-' + k + '-' + M,
+          scopes: ['special-scope']
+        };
+      }),
+      [{
+        roleId: 'client-id:c',
+        scopes: ['assume:k-2-0']
+      }]
+    ]),
+    clients: [
+      {
+        clientId: 'c',
+        includes: [
+          'special-scope'
+        ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i)),
+        excludes: ['*']
+      }
+    ]
   });
 
 
