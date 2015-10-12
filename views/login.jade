@@ -65,6 +65,11 @@ html(lang='en')
                 i.glyphicon.glyphicon-log-out
                 | &nbsp;Log out
         else
+          a(href='/sso-login')
+            | SSO Login
+            br
+            br
+            br
           if authFailed
             div.alert.alert-warning
               strong Authention Failed!

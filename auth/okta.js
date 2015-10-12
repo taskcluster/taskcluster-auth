@@ -109,13 +109,18 @@ var setup = function(app, options) {
   }));*/
 
   passport.use(new SamlStrategy({
-
+    issuer: 'http://http://tc-auth.ngrok.io',
+    path: '/sso-login/callback',
+    entryPoint: 'http://idp.oktadev.com',
+    cert: 'MIIDPDCCAiQCCQDydJgOlszqbzANBgkqhkiG9w0BAQUFADBgMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZyYW5jaXNjbzEQMA4GA1UEChMHSmFua3lDbzESMBAGA1UEAxMJbG9jYWxob3N0MB4XDTE0MDMxMjE5NDYzM1oXDTI3MTExOTE5NDYzM1owYDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFuY2lzY28xEDAOBgNVBAoTB0phbmt5Q28xEjAQBgNVBAMTCWxvY2FsaG9zdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMGvJpRTTasRUSPqcbqCG+ZnTAurnu0vVpIG9lzExnh11o/BGmzu7lB+yLHcEdwrKBBmpepDBPCYxpVajvuEhZdKFx/Fdy6j5mH3rrW0Bh/zd36CoUNjbbhHyTjeM7FN2yF3u9lcyubuvOzr3B3gX66IwJlU46+wzcQVhSOlMk2tXR+fIKQExFrOuK9tbX3JIBUqItpI+HnAow509CnM134svw8PTFLkR6/CcMqnDfDK1m993PyoC1Y+N4X9XkhSmEQoAlAHPI5LHrvuujM13nvtoVYvKYoj7ScgumkpWNEvX652LfXOnKYlkB8ZybuxmFfIkzedQrbJsyOhfL03cMECAwEAATANBgkqhkiG9w0BAQUFAAOCAQEAeHwzqwnzGEkxjzSD47imXaTqtYyETZow7XwBc0ZaFS50qRFJUgKTAmKS1xQBP/qHpStsROT35DUxJAE6NY1Kbq3ZbCuhGoSlY0L7VzVT5tpu4EY8+Dq/u2EjRmmhoL7UkskvIZ2n1DdERtd+YUMTeqYl9co43csZwDno/IKomeN5qaPc39IZjikJ+nUC6kPFKeu/3j9rgHNlRtocI6S1FdtFz9OZMQlpr0JbUt2T3xS/YoQJn6coDmJL5GTiiKM6cOe+Ur1VwzS1JEDbSS2TWWhzq8ojLdrotYLGd9JOsoQhElmz+tMfCFQUFLExinPAyy7YHlSiVX13QH2XTu/iQQ=='
   }, function(profile, done) {
     console.log("authenticated profile: %j", profile);
+    profile.email = profile['urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress'];
+    console.log("Got email: " + profile.email);
     if (!profile.email) {
       return done(new Error("No email found"), null);
     }
-    done(null, profile.email);
+    done(null, {email: profile.email});
   }));
 
   // Serialize user to signed cookie
@@ -130,19 +135,20 @@ var setup = function(app, options) {
     done(null, {email: email});
   });
 
-  // Facilitate persona login
-  app.post('/', function(req, res, next) {
-    passport.authenticate('persona', function(err, user, info) {
-      if (user) {
-        // Make sure we preserve the querystring
-        req.logIn(user, function() {
-          res.redirect('/?' + querystring.stringify(req.query));
-        });
-      } else {
-        renderIndex(true, req, res);
-      }
-    })(req, res, next);
+  app.post('/sso-login/callback', passport.authenticate('saml', {
+    failureRedirect:  '/',
+    failureFlash: true
+  }), (req, res) => {
+    res.redirect('/');
   });
+
+  app.get('/sso-login', passport.authenticate('saml', {
+    failureRedirect:  '/',
+    failureFlash: true
+  }), (req, res) => {
+    res.redirect('/');
+  });
+
 
   // Provide end-point to log out the user
   app.get('/logout', function(req, res){
