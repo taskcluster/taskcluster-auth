@@ -4,8 +4,9 @@ suite("DFA", () => {
   let assert = require('assert');
   let _ = require('lodash');
 
-  let testSortRoles = (({roleIds, sorted}) => {
-    test('sortRolesForDFAGeneration(' + roleIds.join(',') + ')', () => {
+  let testSortRoles = (({title, roleIds, sorted}) => {
+    title = title || 'sortRolesForDFAGeneration(' + roleIds.join(',') + ')';
+    test(title, () => {
       let roles = roleIds.map(i => {return {roleId: i}});
       roles = dfa.sortRolesForDFAGeneration(roles).map(r => r.roleId);
       if (!_.isEqual(roles, sorted)) {
@@ -52,6 +53,19 @@ suite("DFA", () => {
     roleIds: ['ab(', 'ab*', 'aa'],
     sorted: ['aa', 'ab*', 'ab('],
   });
+
+  // Okay, let's make a lot of tests... we'll just shuffle this sorted list
+  // 500 times and see if hit any bugs
+  const sortedRoleIds = [
+    '*', 'a', 'a*', 'aa', 'aaa', 'aab', 'ab', 'abb', 'abb*', 'abbc', 'ca',
+    'caa', 'cab', 'cab*', 'cc*'
+  ];
+  _.range(500).forEach(i => testSortRoles({
+    title:  'sortRolesForDFAGeneration (shuffled ' + i + ')',
+    roleIds:  _.shuffle(sortedRoleIds),
+    sorted: sortedRoleIds
+  }));
+
 
 
   let testMergeScopeSets = (title, {scopesA, scopesB, expected}) => {
@@ -132,29 +146,31 @@ suite("DFA", () => {
     expected: ['assume:tr-10','assume:tr-9','special-scope'],
   });
 
-
-  testMergeScopeSets('can normalize two', {
+  _.range(50).forEach(i => testMergeScopeSets('can normalize two - ' + i, {
     scopesA: _.shuffle(['b*', 'ab', 'aa', 'a*', 'c', 'ca', 'da*']),
     scopesB: _.shuffle(['b*', 'ab', 'aa', 'a*', 'abc', 'ab*', 'ca', 'daa']),
     expected: ['a*', 'b*', 'c', 'ca', 'da*'],
-  });
+  }));
 
-  let testBuildResolver = (title, {roleIds, scope, expected}) => {
-    test("buildResolver (" + title + ")", () => {
-      let roles = roleIds.map(i => {return {roleId: i}});
-      console.time("buildResolver");
-      let {resolver, sets} = dfa.buildResolver(roles);
-      console.timeEnd("buildResolver");
+  let testBuildResolver = (title, {roleIds, scope, expected, skipShuffle}) => {
+    let N = skipShuffle ? 1 : 50;
+    for (let i = 0; i < N; i++) {
+      test("buildResolver (" + title + ") - iteration: " + i, () => {
+          let roles = roleIds.map(i => {return {roleId: i}});
+          //console.time("buildResolver");
+          let {resolver, sets} = dfa.buildResolver(_.shuffle(roles));
+          //console.timeEnd("buildResolver");
 
-      let results = resolver(scope).map(r => r.roleId);
-      if (_.xor(results, expected).length !== 0) {
-        console.log('expected:');
-        console.log(expected);
-        console.log('got:');
-        console.log(results);
-        assert(false, "Expected different result!");
-      }
-    });
+          let results = resolver(scope).map(r => r.roleId);
+          if (_.xor(results, expected).length !== 0) {
+            console.log('expected:');
+            console.log(expected);
+            console.log('got:');
+            console.log(results);
+            assert(false, "Expected different result!");
+          }
+      });
+    }
   };
 
   testBuildResolver('* get all', {
@@ -217,6 +233,24 @@ suite("DFA", () => {
     expected: ['a*', 'ab'],
   });
 
+  testBuildResolver('a*b* matches a*b, a*bc', {
+    roleIds: ['a', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
+    scope: 'assume:a*b*',
+    expected: ['a*b','a*bc'],
+  });
+
+  testBuildResolver('a*b matches a*, a*b', {
+    roleIds: ['a*', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
+    scope: 'assume:a*b',
+    expected: ['a*b','a*'],
+  });
+
+  testBuildResolver('a*b* matches a*b, a*bc', {
+    roleIds: ['a*', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
+    scope: 'assume:a*b*',
+    expected: ['a*b','a*bc', 'a*'],
+  });
+
   testBuildResolver('try with 50', {
     roleIds: _.range(50).map(i => 't-' + i),
     scope: 'assume:t-1',
@@ -226,19 +260,22 @@ suite("DFA", () => {
   testBuildResolver('try with 500', {
     roleIds: _.range(500).map(i => 't-' + i),
     scope: 'assume:t-12*',
-    expected: _.range(10).map(i => 't-12' + i).concat('t-12')
+    expected: _.range(10).map(i => 't-12' + i).concat('t-12'),
+    skipShuffle: true
   });
 
   testBuildResolver('try with 5000', {
     roleIds: _.range(5000).map(i => 't-' + i),
     scope: 'assume:t-122*',
-    expected: _.range(10).map(i => 't-122' + i).concat('t-122')
+    expected: _.range(10).map(i => 't-122' + i).concat('t-122'),
+    skipShuffle: true
   });
 
   testBuildResolver('try with 5000 - exact match', {
     roleIds: _.range(5000).map(i => 't-' + i),
     scope: 'assume:t-1234',
-    expected: ['t-1234']
+    expected: ['t-1234'],
+    skipShuffle: true
   });
 
 
@@ -338,7 +375,6 @@ suite("DFA", () => {
     ].concat(_.range(N + 1).map(i => 'assume:tr-' + i))
   });
 
-
   const M = 5;  // depth
   const K = 500; // multiplier
   testFixedPointComputation('test with depth = ' + M + " x " + K, {
@@ -366,6 +402,38 @@ suite("DFA", () => {
     expected: [
       'special-scope'
     ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i))
+  });
+
+  _.range(100).forEach(i => {
+    const M = _.random(3, 7);
+    const K = _.random(7, 100);
+    let name = 'test with depth = ' + M + " x " + K + " (iteration: " + i + ")";
+    testFixedPointComputation(name, {
+      roles: _.shuffle(_.flatten([
+        _.flatten(_.range(K).map(k => {
+          return _.flatten(_.range(M).map(m => {
+            return {
+              roleId: 'k-' + k + '-' + m,
+              scopes: ['assume:k-' + k + '-' + (m + 1)]
+            };
+          }));
+        })),
+        _.range(K).map(k => {
+          return {
+            roleId: 'k-' + k + '-' + M,
+            scopes: ['special-scope']
+          };
+        }),
+        [{
+          roleId: 'client-id:c',
+          scopes: ['assume:k-2-0']
+        }]
+      ])),
+      scope: 'assume:client-id:c',
+      expected: _.shuffle([
+        'special-scope'
+      ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i)))
+    });
   });
 
 });
