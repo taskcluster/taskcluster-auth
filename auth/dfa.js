@@ -52,7 +52,7 @@ let sortRolesForDFAGeneration = (roles) => {
 exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
 
 /**
- * Compare socpes a and b to see which comes first if sorted
+ * Compare scopes a and b to see which comes first if sorted
  * Such that 'a*' comes before 'a', but otherwise normal order.
  *
  * Example: ['*', '', 'a*', 'a', 'a(', 'aa', 'b'] is a list sorted as such.
@@ -62,15 +62,18 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  *
  * The reasoning for this sorting is pretty simple. If we have a set of scopes:
  *   ['a', 'a*', 'ab', 'b']
- * We may wish to normalize the scope sets, such that we don't have duplicates
- * and redundant scopes. If we sort the set of scopes above we get:
+ * We wish to normalize the scope sets while merging, such that we don't have
+ * duplicates and redundant scopes. If we sort the set of scopes above we get:
  *   ['a*', 'a', 'ab', 'b']
  * Now if we wish to construct the normalized scope-set, we just takes the
  * scopes out of the list one by one in the sorted order. And if the last scope
  * added the to normalized result list doesn't satisfy the current scope, the
  * current scope is added to the result list.
  *
- * On the above list the consideration would be:
+ * Formally, we say that a scope-set S is normalized if there is not two scopes
+ * a, b in S such that a satisfies b.
+ *
+ * On the above list, normalization would look like this:
  *   R = []                       // Normalized result list
  *   S = ['a*', 'a', 'ab', 'b']   // Sorted input list
  *   L = null                     // Last normalized scope
@@ -96,8 +99,7 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  *   R, satisfies all the scopes in S, but it's smaller, and doesn't have any
  *   duplicates, or scopes that satisfies other scopes.
  *
- * Formally, we say that a scope-set S is normalized if there is not two scopes
- * a, b in S such that a satisfies b.
+ * We perform normalization in the process of merging scope sets; see below.
  */
 let scopeCompare = (a, b) => {
   let n = a.length;
@@ -139,8 +141,9 @@ let sortScopesForMerge = (scopes) => {
 exports.sortScopesForMerge = sortScopesForMerge;
 
 /**
- * Take two sets of sorted scopes and merge them removing duplicates,
- * as well as scopes implied by a star-scopes.
+ * Take two sets of sorted scopes and merge them, normalizing in the process.
+ * Normalizing means removing duplicates, as well as scopes implied by a
+ * star-scopes.
  *
  * This method returns a new array, and leaves both arguments untouched.
  * Hence, you should not clone arrays prior to calling this method.
@@ -228,14 +231,20 @@ let mergeScopeSets = (scopes1, scopes2) => {
 exports.mergeScopeSets = mergeScopeSets;
 
 /**
- * Build a DFA of states on the form:
+ * Build a DFA of states of the form:
  * ```js
  * {
- *   'a': // next state if the current character is 'a'
+ *   'a': { ... }// next state if the current character is 'a'
  *   'end': [] // set of roles granted if the scope ends here
- *   'prefix': {...} // role granted if the scope matches so far
+ *   'prefix': ... // role granted if the scope matches so far (but recognition
+ *                 // should continue)
  * }
  * ```
+ *
+ * Given a set of roles, we want to build a recognizer that will match a given
+ * scope against those roles, including support for the kleen star (`*`) in the
+ * scope and in the roles.  When a scope is recognized, it should be trivial to
+ * read off the set of matched roles.
  *
  * If we recall basic language theory we know that DFAs can recognize all
  * regular languages. Constructing a DFA for a regular language is, however, not
@@ -253,40 +262,34 @@ exports.mergeScopeSets = mergeScopeSets;
  *  4. bc
  *  5. c
  *
- * The quick reader may observe that when represented like this we may represent
- * each state of a DFA as character index k, start i and end n offset in the
- * list of possible roleIds matched.
- * Indeed the generateDFA(roles, i, n, k) function generates a DFA state for
- * roles[i:n] matching character at index k.
+ * The quick reader may observe that when represented like this we may
+ * represent each state of a DFA as character index k, start i and end n offset
+ * in the list of possible roleIds matched.  Indeed the generateDFA(roles, i,
+ * n, k) function generates a DFA state for roles[i:n] matching character at
+ * index k.
  *
  * If we take the roleIds above and generate the DFA state using the generateDFA
  * function below we will get a structure as follows:
  * ```js
- * {
- *   'a': {
- *     end: ['a']
- *   },
- *   'b': {
- *     end: ['b'],
- *     prefix: 'b*',
- *     'c': {
- *       end: ['bc']
- *     }
- *   }
- *   'c': {
- *     end: ['c']
- *   }
- * }
+ * { 'a': { end: ['a'] },
+ *   'b': { end: ['b'],
+ *          prefix: 'b*',
+ *          'c': { end: ['bc'] },
+ *          '*': { end: ['b', 'bc'] } },
+ *   'c': { end: ['c'] },
+ *   '*': { end: [ 'a', 'b', 'b*', 'bc', 'c' ] } }
  * ```
- * The state is not accepting and has 3 transitions for 'a', 'b' and 'c'.
- * If we look at the state following an 'a' transition, we see the state:
+ *
+ * The state is not accepting and has four transitions for 'a', 'b', 'c', and
+ * '*'.  If we look at the state following an 'a' transition, we see the state:
  *   `{end: ['a']}`
  * This is an accepting state, if the scope being scanned ends here then it
  * matches the roleId: 'a'.
+ *
  * If we look at the state following a 'b' transition we again see an accepting
  * state, but there is also a transition on 'c' to the state '{end: ['c']}`.
  * Another interesting thing with the state following 'b' is that the scope
- * being scanned have matched the roleId: 'b*'. This is indicated with the
+ * being scanned has matched the roleId: 'b*'. This is indicated with the
  * `prefix: 'b*'` property. This property is intended to indicate that no matter
  * what is matched after this, the roleId: 'b*' have definitely been matched and
  * should be returned. We do this for efficiency, rather than remembering the
@@ -353,10 +356,15 @@ let generateDFA = (roles, i, n, k) => {
   if (!star) {
     state['*'] = star = {};
   }
+
+  // of the set of roles in [begin, n], include all but the nonterminal role
+  // (the one ending in *)
   if (!state.prefix) {
     star.end = roles.slice(begin, n);
   } else {
+    // skip the first role
     star.end = roles.slice(begin + 1, n);
+    // but if the nonterminal role was second, replace it with the first
     if (state.end) {
       star.end[0] = roles[begin];
     }
@@ -468,7 +476,7 @@ let buildResolver = (roles) => {
   let resolver = new Function('sets', 'scope', body);
   resolver = resolver.bind(null, sets);
   return {sets, resolver: (scope) => {
-      // Optimization so our DFA doesn't only has to operate on roleId
+      // Optimization so our DFA only has to operate on roleId
       if (scope.startsWith('assume:')) {
         // TODO: note that this might be slightly improved by not taking a slice
         // here but instead modifying the offset at which the current character
