@@ -4,6 +4,35 @@ suite("DFA", () => {
   let assert = require('assert');
   let _ = require('lodash');
 
+  test('generateDFA', () => {
+    let roleIds = ['a', 'b*', 'b', 'bc', 'c'];
+    let roles = roleIds.map(i => {return {roleId: i}});
+    //roles = dfa.sortRolesForDFAGeneration(roles);
+    let sets = [[]];
+    let state = dfa.generateDFA(roles, 0, roles.length, 0, sets, 0);
+    console.log(JSON.stringify(state, null, 2));
+    let resolvedSets = [];
+    for(let i = 0; i < sets.length; i++) {
+      resolvedSets[i] = [];
+      for (let r of sets[i]) {
+        if (typeof(r) === 'number') {
+          resolvedSets[i] = resolvedSets[i].concat(resolvedSets[r]);
+        } else {
+          resolvedSets[i].push(r.roleId);
+        }
+      }
+    }
+    for(let i = 0; i < sets.length; i++) {
+      let ids = sets[i].map(r => r.roleId || r);
+      console.log("raw sets[" + i + "] = " + JSON.stringify(ids));
+    }
+    for(let i = 0; i < sets.length; i++) {
+      console.log("resolved sets[" + i + "] = " + JSON.stringify(resolvedSets[i]));
+    }
+  });
+
+  return;
+
   let testSortRoles = (({title, roleIds, sorted}) => {
     title = title || 'sortRolesForDFAGeneration(' + roleIds.join(',') + ')';
     test(title, () => {

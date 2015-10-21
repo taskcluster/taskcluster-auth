@@ -234,15 +234,21 @@ exports.mergeScopeSets = mergeScopeSets;
  * Build a DFA of states of the form:
  * ```js
  * {
- *   'a': { ... }// next state if the current character is 'a'
- *   'end': [] // set of roles granted if the scope ends here
- *   'prefix': ... // role granted if the scope matches so far (but recognition
- *                 // should continue)
+ *   'a': { ... },  // next state if the current character is 'a'
+ *   'end': x,      // index s.t. sets[x] is the roles granted if the scope
+ *                  // ends here (end of scope string).
+ *   'default': y   // index s.t. sets[y] is the roles granted if the scope
+ *                  // doesn't match a next state.
  * }
  * ```
+ * The `sets` object is an array given as parameter that new sets of roles will
+ * be added to. This ensures that we don't create two array objects to represent
+ * the same set of roles. For efficiency, sets[i] for some i, may be an array
+ * of indexes s.t. that sets[i] = [..., j] for some j < i. The set is to be
+ * interpreted as [...].concat(sets[j]), we allow this for efficiency.
  *
  * Given a set of roles, we want to build a recognizer that will match a given
- * scope against those roles, including support for the kleen star (`*`) in the
+ * scope against those roles, including support for the kleene star (`*`) in the
  * scope and in the roles.  When a scope is recognized, it should be trivial to
  * read off the set of matched roles.
  *
@@ -257,8 +263,8 @@ exports.mergeScopeSets = mergeScopeSets;
  * However, we don't need to the full expressiveness of regular expressions. If
  * We consider the following set roleIds:
  *  1. a
- *  2. b
- *  3. b*
+ *  2. b*
+ *  3. b
  *  4. bc
  *  5. c
  *
@@ -271,13 +277,30 @@ exports.mergeScopeSets = mergeScopeSets;
  * If we take the roleIds above and generate the DFA state using the generateDFA
  * function below we will get a structure as follows:
  * ```js
- * { 'a': { end: ['a'] },
- *   'b': { end: ['b'],
- *          prefix: 'b*',
- *          'c': { end: ['bc'] },
- *          '*': { end: ['b', 'bc'] } },
- *   'c': { end: ['c'] },
- *   '*': { end: [ 'a', 'b', 'b*', 'bc', 'c' ] } }
+ * {
+ *   default: 0,                // sets[0] = []
+ *   'a': {
+ *          end: 1              // sets[1] = ['a']
+ *        },
+ *   'b': {
+ *          end: 2,             // sets[2] = ['b', 3] -> ['b', 'b*']
+ *          default: 3,         // sets[3] = ['b*']
+ *          'c': {
+ *                  end: 4,     // sets[4] = ['bc', 3] -> ['bc, 'b*']
+ *                  default: 3  // sets[3] = ['b*']
+ *               },
+ *          '*': {
+ *                  end: 5,     // sets[5] = ['b', 'bc', 3] -> ['b', 'bc', 'b*']
+ *                  default: 3  // sets[3] = ['b*']
+ *               }
+ *        },
+ *   'c': {
+ *          end: 6              // sets[6] = ['c']
+ *        },
+ *   '*': {
+ *          end: 7              // sets[7] = [ 'a', 'b', 'b*', 'bc', 'c' ]
+ *        }
+ * }
  * ```
  *
  * The state is not accepting and has four transitions for 'a', 'b', 'c', and
@@ -297,77 +320,93 @@ exports.mergeScopeSets = mergeScopeSets;
  * unmatched transition. This little hack, also means that we don't need any
  * cycles in our DFA.
  *
- * Must be started from: i = 0, n = roles.length, k = 0
+ * Must be started with:
+ *   i = 0, n = roles.length, k = 0, sets = [[]], implied = 0
  */
-let generateDFA = (roles, i, n, k) => {
-  var state = {};
-  var role = roles[i];
-  var current = role.roleId[k];
-  var begin = i;
-  // Recall that because '' and '*' are sorted to top
-  if (current === undefined) {
-    // If current character is undefined (meaning end of string)
-    // then this is an accepting state for the terminal roleId assigned to role.
-    state.end = [role];
-    // We skip role and continue as we would have without it
-    i += 1;
-    if (i >= n) {
-      return state;
-    }
-    role = roles[i];
-    current = role.roleId[k];
+let generateDFA = (roles, i, n, k, sets, implied) => {
+  var state = {default: implied, end: implied};
+  // We have to empty array of roles then we're done, we just have the default
+  // roles that was already implied and we can't possibly have anything else.
+  if (i >= n) {
+    return state;
   }
-  // If current character is a kleene star and the roleId ends here, then
-  // we have already matched a prefix role, and set the prefix property so that
-  // when this is evaluated we know the prefix roleId has been matched.
+  // We now get a reference to the first role from this subset: j = i
+  var j = i;
+  var role = roles[j];
+  var current = role.roleId[k]; // current character
+  // Recall that '*' and '' are sorted to top
   if (current === '*' && role.roleId.length === k + 1) {
-    state.prefix = role;
-    i += 1;
-    if (i >= n) {
+    // If current character is a kleene star and the roleId ends after it, then
+    // we have already matched a prefix role, so we extend the implied set to
+    // include the current role.
+    implied = sets.push([role, implied]) - 1;
+    // And change the default transition for the current state to implied
+    state.default = implied;
+    // Now we move to the next role, if there is one
+    j += 1;
+    if (j >= n) {
+      // If there is no next role, we add a '*' transition as we always want to
+      // have such a transition. Technically, we don't need it at this level,
+      // but to avoid duplicates in sets, we may lookup state['*'].end on for
+      // any state returned. So we require the '*' -> {end: ..., default: ...},
+      // transition.
+      state['*'] = {end: implied, default: implied};
       return state;
     }
-    role = roles[i];
+    // Find next role and current character
+    role = roles[j];
     current = role.roleId[k];
   }
-  var start = i;
-  while(i < n) {
-    role = roles[i];
+  if (role.roleId.length === k) {
+    // If current roleId ends here then this is an accepting state for the
+    // terminal roleId assigned to role. We add the current role to the implied
+    // set and sets it's index as state.end.
+    state.end = sets.push([role, implied]) - 1;
+    // Now we move to the next role, if there is one
+    j += 1;
+    if (j >= n) {
+      // Again we add a transition for '*', this time we actually need it, as
+      // the current role is given for after '*' -> end transition.
+      state['*'] = {end: state.end, default: implied};
+      return state;
+    }
+    // Find next role and current character
+    role = roles[j];
+    current = role.roleId[k];
+  }
+  var start = j;
+  while(j < n) {
+    role = roles[j];
     var c = role.roleId[k];
     // Here we go through the roles in the sorted order given, and whenever we
     // encounter a new character we generate a DFA state for it, giving it the
     // start and end-offset in the roles list of when we first saw the character
     // and when it ended.
     if (c !== current) {
-      state[current] = generateDFA(roles, start, i, k + 1);
+      state[current] = generateDFA(roles, start, j, k + 1, sets, implied);
       current = c;
-      start = i;
+      start = j;
     }
-    i += 1;
+    j += 1;
   }
-  // Same as inside the loop, just for the last character, if there is one.
-  if (start !== i || !state.end) {
-    state[current] = generateDFA(roles, start, i, k + 1);
-  }
+  // Same as inside the loop, just for the last character
+  state[current] = generateDFA(roles, start, j, k + 1, sets, implied);
+
   // There must always be a transition for the '*', if it is matched in the
-  // scope we're scanning then we must to a state where the if the state ends
+  // scope we're scanning then we must go to a state where if the scope ends
   // you get all the roles is the current sub-tree. This is because '*' at the
   // very end of a scope grants all the scopes matching it up to that '*'.
-  var star = state['*'];
-  if (!star) {
-    state['*'] = star = {};
-  }
+  var star = state['*'] = state['*'] || {default: implied};
 
-  // of the set of roles in [begin, n], include all but the nonterminal role
-  // (the one ending in *)
-  if (!state.prefix) {
-    star.end = roles.slice(begin, n);
+  // if there is only one transition from this state, no special end transition,
+  // then the current state has the same sub-tree as the state of that
+  // transition. Hence, we can just take sets index from the '*' -> end of that
+  // transition. Note, this is the place where we require that all states
+  // returned contains a '*' -> end transition.
+  if (i === j) {
+    star.end = state[current]['*'].end;
   } else {
-    // skip the first role
-    star.end = roles.slice(begin + 1, n);
-    // but if the nonterminal role was second, replace it with the first
-    if (state.end) {
-      star.end[0] = roles[begin];
-    }
+    star.end = sets.push(roles.slice(i, n)) - 1;
   }
 
   return state;
