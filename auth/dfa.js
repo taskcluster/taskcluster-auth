@@ -4,61 +4,10 @@ var Promise     = require('promise');
 var ScopeResolver = require('./scoperesolver');
 
 /**
- * Sort roles by roleId, such that 'a*', comes right after 'a'
- *
- * Example: ['', 'a', 'a*', 'a(', 'aa', 'b'] is a list sorted as such.
- * Notice that the difference from a normal sorted list is only that '*'
- * comes before any other characters. Normally 'a(' would come before 'a*',
- * but not here.
- *
- * We do this such that we get a list looking a but like this:
- *  1. client-id:a
- *  2. client-id:try
- *  3. client-id:try*
- *  4. client-id:try-more
- *  5. client-id:z
- *
- * The cool thing is that when generating a DFA for this list all the possible
- * candidates (1-5) have the same path until we reach the 11th character.
- * At the 11th character the string diverge and any DFA constructed must
- * naturally have more than one state. However, for 11th character our DFA still
- * only needs 3 states, one representing (1), (2-4) and (5). But sorting the
- * list of roles, we represent these subsets elegantly and efficiently using
- * array offsets in the list of roles.
- *
- * More details on this later, for now just know that it makes DFA construct
- * both efficient and elegant (not to mention easy).
- */
-let sortRolesForDFAGeneration = (roles) => {
-  return roles.sort((a, b) => {
-    let n = a.roleId.length;
-    let m = b.roleId.length;
-    if (n === m && a.roleId.startsWith(b.roleId.slice(0, -1))) {
-      if (a.roleId[n - 1] === '*') {
-        return -1;
-      }
-      if (b.roleId[n - 1] === '*') {
-        return 1;
-      }
-    }
-    if (a.roleId < b.roleId) {
-      return -1;
-    }
-    return 1;
-  });
-};
-
-// Export sortRolesForDFAGeneration
-exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
-
-/**
  * Compare scopes a and b to see which comes first if sorted
  * Such that 'a*' comes before 'a', but otherwise normal order.
  *
  * Example: ['*', '', 'a*', 'a', 'a(', 'aa', 'b'] is a list sorted as such.
- *
- * Notice that this is different from `sortRolesForDFAGeneration` as '*' comes
- * before the empty string.
  *
  * The reasoning for this sorting is pretty simple. If we have a set of scopes:
  *   ['a', 'a*', 'ab', 'b']
@@ -122,7 +71,8 @@ let scopeCompare = (a, b) => {
       if (a.startsWith(b)) {
         return -1;
       }
-    } else if (b[n - 1] === '*') {
+    }
+    if (m > n && b[m - 1] === '*') {
       if (b.startsWith(a)) {
         return 1;
       }
@@ -139,6 +89,7 @@ let sortScopesForMerge = (scopes) => {
 
 // Export sortScopesForMerge
 exports.sortScopesForMerge = sortScopesForMerge;
+
 
 /**
  * Take two sets of sorted scopes and merge them, normalizing in the process.
@@ -229,6 +180,36 @@ let mergeScopeSets = (scopes1, scopes2) => {
 
 // Export mergeScopeSets
 exports.mergeScopeSets = mergeScopeSets;
+
+/**
+ * Sort roles by roleId, such that 'a', comes right after 'a*'
+ *
+ * Example: ['', 'a*', 'a', 'a(', 'aa', 'b'] is a list sorted as such.
+ *
+ * We do this such that we get a list looking a but like this:
+ *  1. client-id:a
+ *  3. client-id:try*
+ *  2. client-id:try
+ *  4. client-id:try-more
+ *  5. client-id:z
+ *
+ * The cool thing is that when generating a DFA for this list all the possible
+ * candidates (1-5) have the same path until we reach the 11th character.
+ * At the 11th character the string diverge and any DFA constructed must
+ * naturally have more than one state. However, for 11th character our DFA still
+ * only needs 3 states, one representing (1), (2-4) and (5). But sorting the
+ * list of roles, we represent these subsets elegantly and efficiently using
+ * array offsets in the list of roles.
+ *
+ * More details on this later, for now just know that it makes DFA construct
+ * both efficient and elegant (not to mention easy).
+ */
+let sortRolesForDFAGeneration = (roles) => {
+  return roles.sort((a, b) => scopeCompare(a.roleId, b.roleId));
+};
+
+// Export sortRolesForDFAGeneration
+exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
 
 /**
  * Build a DFA of states of the form:
@@ -342,6 +323,7 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
     implied = sets.push([role, implied]) - 1;
     // And change the default transition for the current state to implied
     state.default = implied;
+    state.end = implied;
     // Now we move to the next role, if there is one
     j += 1;
     if (j >= n) {
@@ -357,6 +339,7 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
     role = roles[j];
     current = role.roleId[k];
   }
+  var splitCount = 0;
   if (role.roleId.length === k) {
     // If current roleId ends here then this is an accepting state for the
     // terminal roleId assigned to role. We add the current role to the implied
@@ -364,6 +347,7 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
     state.end = sets.push([role, implied]) - 1;
     // Now we move to the next role, if there is one
     j += 1;
+    splitCount += 1;
     if (j >= n) {
       // Again we add a transition for '*', this time we actually need it, as
       // the current role is given for after '*' -> end transition.
@@ -386,6 +370,7 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
       state[current] = generateDFA(roles, start, j, k + 1, sets, implied);
       current = c;
       start = j;
+      splitCount += 1;
     }
     j += 1;
   }
@@ -398,16 +383,19 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
   // very end of a scope grants all the scopes matching it up to that '*'.
   var star = state['*'] = state['*'] || {default: implied};
 
-  // if there is only one transition from this state, no special end transition,
-  // then the current state has the same sub-tree as the state of that
-  // transition. Hence, we can just take sets index from the '*' -> end of that
-  // transition. Note, this is the place where we require that all states
-  // returned contains a '*' -> end transition.
-  if (i === j) {
+  // if there is only one transition from this state then the current state has
+  // the same sub-tree as the state of that transition. Hence, we can just take
+  // sets index from the '*' -> end of that transition. Note, this is the place
+  // where we require that all states returned contains a '*' -> end transition.
+  if (splitCount === 0) {
     star.end = state[current]['*'].end;
   } else {
-    star.end = sets.push(roles.slice(i, n)) - 1;
+    //console.log("--")
+    let set = roles.slice(i, n);
+    set.push(implied);
+    star.end = sets.push(set) - 1;
   }
+  //console.log("star.end: " + star.end + "   i: %s, n: %s, j: %s", i, n, j, roles.slice(i,n).map(r => r.roleId));
 
   return state;
 };
@@ -438,77 +426,40 @@ exports.generateDFA = generateDFA;
 let buildResolver = (roles) => {
   // Generate DFA
   roles = sortRolesForDFAGeneration(roles);
-  let dfa = generateDFA(roles, 0, roles.length, 0);
+  let sets = [[]];
+  let dfa = generateDFA(roles, 0, roles.length, 0, sets, 0);
 
   // Render a DFA state to code
-  let renderDFA = (state, depth, impliedRoles, sets, i) => {
+  let renderDFA = (state, depth) => {
     var d = '';
     while (d.length < depth * 4) d += '    ';
     var c = '';
+    if (typeof(state.end) === 'number') {
+      c += d + 'if (n === ' + depth + ') {\n';
+      c += d + '  return ' + state.end;
+      c += d + '}\n'
+    }
     // In each state we switch on the `scope` variable at the given depth.
     c += d + 'switch(scope[' + depth + ']) {\n';
-    if (state.prefix) {
-      // If at the current state we've already matched some non-terminal roleId
-      // (a roleId ending with '*') we add this to the set of implied roles and
-      // we add this set of implied to set of possible results, the `sets`
-      // variable and then we remember its offset.
-      impliedRoles = [state.prefix].concat(impliedRoles);
-      i = sets.push(impliedRoles) - 1;
-      // TODO: If we wish to optimize further and better handle degenerate cases
-      // we could optimize this further by allowing impliedRoles, exactRoles as
-      // computed below and generally all entries in `sets` to be lists of lists
-      // of lists... of roles. Basically allows infinite number of array
-      // wrappers. The extra wrappers wouldn't imply new semantics and
-      // flattening then with _.flattenDeep() would be completely valid.
-      // The aim would be to avoid construction of new arrays contains all the
-      // roles by using [state.prefix, impliedRoles] instead of using:
-      //   [state.prefix].concat(impliedRoles)
-      // Further more it speed up the computation of sets[i] as lists of scopes
-      // in computeFixedPoint()
-    }
-    var exactRoles = impliedRoles;
-    var j = i;
-    if (state.end) {
-      // if the current state is a terminal state, we create a set of roles
-      // granted if the string ends here. Before we insert this set in the
-      // `sets` variable, we check with the last entry in the `sets` array to
-      // see if it matches the current set. If so we don't have to insert, but
-      // can instead just return the current set.
-      exactRoles = state.end.concat(exactRoles);
-      if (_.xor(exactRoles, sets[sets.length - 1]).length === 0) {
-        j = sets.length - 1;
-      } else {
-        j = sets.push(exactRoles) - 1;
-      }
-    }
-    // if the current character is undefined we return sets[j] where j is the
-    // of set of exactRoles as computed above if this is a terminal state.
-    // Otherwise, we have i = j and sets[i] is the set of implied roles
-    // collected while traversing to this state...
-    c += d + '  case undefined:\n';
-    c += d + '    return sets[' + j + '];\n';
     _.forEach(state, (s, character) => {
-      if (character === 'prefix' || character === 'end') {
+      if (character === 'default' || character === 'end') {
         return;
       }
       // For each key of the state object that isn't 'prefix' or 'end' we have
       // a transition to another state. So we render the switch for that DFA.
       c += d + '  case \'' + character + '\':\n';
-      c += renderDFA(s, depth + 1, impliedRoles, sets, i);
+      c += renderDFA(s, depth + 1);
       c += d + '    break;\n';
     });
-    // If we have no matches then we just return the roles implied so far..
     c += d + '  default:\n';
-    c += d + '    return sets[' + i + '];\n';
-
+    c += d + '    return ' + (state.default || 0) + ';\n';
     c += d + '}\n';
     return c;
   };
   // Initially the implied roles is the empty set [] == sets[0], which is why
   // we call with sets = [[]] and i = 0. Obviously, we start at character offset
   // zero, hence, depth = 0.
-  let sets = [[]];
-  let body = renderDFA(dfa, 0, [], sets, 0);
+  let body = 'var n = scope.length;\n' + renderDFA(dfa, 0);
 
   // Create resolver function and give it both sets and scopes as parameters
   // then bind sets so that'll always return an entry from sets.
@@ -527,7 +478,7 @@ let buildResolver = (roles) => {
       }
       // If it doesn't start with assume:... or a..* then we just return sets[0]
       // which is always the empty set.
-      return sets[0];
+      return 0;
     }
   };
 };
