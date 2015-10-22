@@ -259,6 +259,11 @@ suite("DFA", () => {
     });
   };
 
+  testBuildResolver('a* grants a, aa, ab', {
+    roleIds: ['a', 'aa', 'ab'],
+    scope: 'assume:a*',
+    expected: ['a', 'aa', 'ab'],
+  });
 
   testBuildResolver('ab* matches ab, abc', {
     roleIds: ['a', 'ab', 'abc'],
