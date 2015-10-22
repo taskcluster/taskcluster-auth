@@ -339,6 +339,7 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
     role = roles[j];
     current = role.roleId[k];
   }
+  var afterImplied = j;
   var splitCount = 0;
   if (role.roleId.length === k) {
     // If current roleId ends here then this is an accepting state for the
@@ -390,12 +391,10 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
   if (splitCount === 0) {
     star.end = state[current]['*'].end;
   } else {
-    //console.log("--")
-    let set = roles.slice(i, n);
+    let set = roles.slice(afterImplied, n);
     set.push(implied);
     star.end = sets.push(set) - 1;
   }
-  //console.log("star.end: " + star.end + "   i: %s, n: %s, j: %s", i, n, j, roles.slice(i,n).map(r => r.roleId));
 
   return state;
 };

@@ -166,28 +166,42 @@ suite("DFA", () => {
 
 
   let testBuildResolver = (title, {
-    roleIds, scope, expected, skipShuffle, dump
+    roleIds, scope, expected, skipShuffle, dump, maxSets, time
   }) => {
     skipShuffle = true;
     let N = skipShuffle ? 1 : 50;
     test("buildResolver (" + title + ")", () => {
       for (let i = 0; i < N; i++) {
         let roles = roleIds.map(i => {return {roleId: i}});
-        //console.time("buildResolver");
+        if (time) {
+          console.time("buildResolver");
+        }
         let {resolver, sets} = dfa.buildResolver(_.shuffle(roles));
-        //console.timeEnd("buildResolver");
+        if (time) {
+          console.timeEnd("buildResolver");
+        }
 
-        let results = [];
-        let resolveSets = (i) => {
-          sets[i].forEach(r => {
-            if (typeof(r) === 'number') {
-              resolveSets(r);
-            } else {
-              results.push(r.roleId);
-            }
-          });
+        let resolveSet = (i) => {
+          let results = [];
+          let resolve = (i) => {
+            sets[i].forEach(r => {
+              if (typeof(r) === 'number') {
+                resolve(r);
+              } else {
+                results.push(r.roleId);
+              }
+            });
+          };
+          resolve(i);
+          return results;
         };
-        resolveSets(resolver(scope));
+        if (time) {
+          console.time("resolver(scope) x 10k");
+          _.range(10000).forEach(() => resolver(scope));
+          console.timeEnd("resolver(scope) x 10k");
+        }
+
+        let results = resolveSet(resolver(scope));
 
         if (dump) {
           let rs = dfa.sortRolesForDFAGeneration(_.cloneDeep(roles));
@@ -209,6 +223,36 @@ suite("DFA", () => {
           console.log(results);
           assert(false, "Expected different result!");
         }
+
+        if (maxSets) {
+          assert(sets.length <= maxSets, "more sets than allowed");
+        }
+
+        let resolvedSets = [];
+        sets.forEach((set, index) => {
+          let resolved = resolveSet(index);
+          let unique = _.uniq(resolved);
+          if (resolved.length !== unique.length) {
+            console.log("Duplicates in set: " + resolved.join(','));
+            console.log("sets[" + index + "] = " + JSON.stringify(sets[index]));
+            assert(false, "Sets shouldn't have dupliates!");
+          }
+          resolved.sort()
+          resolvedSets.forEach((rs, i2) => {
+            if(_.isEqual(rs, resolved)) {
+              console.log("Duplicated set: " + resolved.join(','));
+              console.log("sets[" + i2 + "] = " +
+                          JSON.stringify(sets[i2]));
+              console.log("sets[" + index + "] = " +
+                          JSON.stringify(sets[index]));
+              console.log("sets[" + i2 + "] -> " + JSON.stringify(rs));
+              console.log("sets[" + index + "] -> " + JSON.stringify(resolved));
+              assert(false, "Duplicate sets!!!");
+            }
+          });
+          resolvedSets.push(resolved);
+        });
+
         // shuffle for next round
         roleIds = _.shuffle(roleIds);
       }
@@ -232,8 +276,8 @@ suite("DFA", () => {
     roleIds: ['a*', 'ab*', 'ac*', 'd'],
     scope: 'assume:a*',
     expected: ['a*', 'ab*', 'ac*'],
+    maxSets: 10,
   });
-
 
   testBuildResolver('a gets a*', {
     roleIds: ['ab*', 'a*'],
@@ -241,11 +285,36 @@ suite("DFA", () => {
     expected: ['a*'],
   });
 
+  testBuildResolver('max sets (with long scopes)', {
+    roleIds: [
+      'ab*', 'aaaaaaaaaa*', 'aaaaaaaaaaaaaaaaaaaaaaaaa*',
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+    ],
+    scope: 'assume:ab*',
+    expected: ['ab*',
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+    ],
+    maxSets: 6,
+  });
+
+  testBuildResolver('timing with long scopes', {
+    roleIds: [
+      'ab*', 'aaaaaaaaaa*', 'aaaaaaaaaaaaaaaaaaaaaaaaa*',
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+    ],
+    scope: 'assume:ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsa*',
+    expected: ['ab*',
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+    ],
+    maxSets: 6,
+    time: true,
+  });
 
   testBuildResolver('ab gets ab*, a*', {
     roleIds: ['ab*', 'a*'],
     scope: 'assume:ab',
     expected: ['ab*', 'a*'],
+    maxSets: 4,
   });
 
   testBuildResolver('a gets * and a', {
@@ -258,6 +327,7 @@ suite("DFA", () => {
     roleIds: ['a*', 'ab*', 'ac*', 'd'],
     scope: 'assume:ab',
     expected: ['a*', 'ab*'],
+    maxSets: 10,
   });
 
   testBuildResolver('ab* matches a*', {
@@ -270,6 +340,7 @@ suite("DFA", () => {
     roleIds: ['a', 'b', 'c'],
     scope: '*',
     expected: ['a', 'b', 'c'],
+    maxSets: 5,
   });
 
   testBuildResolver('a* get all', {
@@ -324,6 +395,7 @@ suite("DFA", () => {
     roleIds: ['a*', 'ab', 'abc'],
     scope: 'assume:ab',
     expected: ['a*', 'ab'],
+    maxSets: 6,
   });
 
   testBuildResolver('a*b* matches a*b, a*bc', {
@@ -354,21 +426,145 @@ suite("DFA", () => {
     roleIds: _.range(500).map(i => 't-' + i),
     scope: 'assume:t-12*',
     expected: _.range(10).map(i => 't-12' + i).concat('t-12'),
-    skipShuffle: true
+    skipShuffle: true,
+    time: true,
   });
 
   testBuildResolver('try with 5000', {
     roleIds: _.range(5000).map(i => 't-' + i),
     scope: 'assume:t-122*',
     expected: _.range(10).map(i => 't-122' + i).concat('t-122'),
-    skipShuffle: true
+    skipShuffle: true,
+    time: true,
   });
 
   testBuildResolver('try with 5000 - exact match', {
     roleIds: _.range(5000).map(i => 't-' + i),
     scope: 'assume:t-1234',
     expected: ['t-1234'],
-    skipShuffle: true
+    skipShuffle: true,
+    time: true,
+  });
+
+  // Test cases for grantsRole
+  [
+    {
+      // cases with *
+      scope:    '*',
+      role:     '*',
+      result:   true
+    }, {
+      scope:    '*',
+      role:     'client-id:queue',
+      result:   true
+    }, {
+      scope:    '*',
+      role:     'task-run-id:*',
+      result:   true
+    }, {
+      // cases with as*
+      scope:    'as*',
+      role:     '*',
+      result:   true
+    }, {
+      scope:    'as*',
+      role:     'client-id:queue',
+      result:   true
+    }, {
+      scope:    'as*',
+      role:     'task-run-id:*',
+      result:   true
+    }, {
+      scope:    'queue:*',
+      role:     'task-run-id:*',
+      result:   false
+    }, {
+      // cases with assume:*
+      scope:    'assume:*',
+      role:     'client-id:queue',
+      result:   true
+    }, {
+      scope:    'assume:*',
+      role:     'task-run-id:*',
+      result:   true
+    }, {
+      scope:    'assume:*',
+      role:     '*',
+      result:   true
+    }, {
+      // cases with assume:<prefix>*
+      scope:    'assume:client-id:*',
+      role:     'client-id:queue',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:*',
+      role:     'task-run-id:*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:*',
+      role:     '*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:*',
+      role:     'task-run-*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:*',
+      role:     'client-id:queue',
+      result:   false
+    }, {
+      scope:    'assume:task-run-id:*',
+      role:     'client-id:*',
+      result:   false
+    }, {
+      // cases with assume:roleId
+      scope:    'assume:client-id:queue',
+      role:     'client-id:queue',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:12345',
+      role:     'task-run-id:72345',
+      result:   false
+    }, {
+      scope:    'assume:task-run-id:12345',
+      role:     'task-run-id:*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:12345',
+      role:     '*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:12345',
+      role:     'task-run-*',
+      result:   true
+    }, {
+      scope:    'assume:task-run-id:12345',
+      role:     'client-id:*',
+      result:   false
+    }, {
+      scope:    'assume:a',
+      role:     'a*',
+      result:   true
+    }, {
+      scope:    'assume:a*',
+      role:     'a*',
+      result:   true
+    }, {
+      scope:    'assume:a*',
+      role:     'a',
+      result:   true
+    }, {
+      scope:    'assume:ab*',
+      role:     'ac*',
+      result:   false
+    }
+  ].forEach(({scope, role, result}) => {
+    testBuildResolver(`grantsRole(${scope}, ${role}) === ${result}`, {
+      roleIds: [role],
+      scope,
+      expected: result ? [role] : [],
+      maxSets: 5,
+    });
   });
 
 return;
