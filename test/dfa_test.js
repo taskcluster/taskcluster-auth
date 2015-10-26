@@ -572,7 +572,6 @@ suite("DFA", () => {
     });
   });
 
-return;
 
   let testFixedPointComputation = (title, {roles, scope, expected}) => {
     test(title, () => {
@@ -647,6 +646,7 @@ return;
       'assume:test-role-10'
     ]
   });
+
 
   const N = 500;
   testFixedPointComputation('test with N = ' + N, {

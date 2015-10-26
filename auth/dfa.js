@@ -252,8 +252,8 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  * The quick reader may observe that when represented like this we may
  * represent each state of a DFA as character index k, start i and end n offset
  * in the list of possible roleIds matched.  Indeed the generateDFA(roles, i,
- * n, k) function generates a DFA state for roles[i:n] matching character at
- * index k.
+ * n, k, sets, implied) function generates a DFA state for roles[i:n]
+ * matching character at index k where sets[implied] are previously matched.
  *
  * If we take the roleIds above and generate the DFA state using the generateDFA
  * function below we will get a structure as follows:
@@ -262,13 +262,22 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  *   default: 0,                // sets[0] = []
  *   'a': {
  *          end: 1              // sets[1] = ['a']
+ *          default: 0,         // sets[0] = []
+ *          '*': {
+ *                  end: 1,     // sets[1] = ['a']
+ *                  default: 1  // sets[1] = ['a']
+ *               }
  *        },
  *   'b': {
  *          end: 2,             // sets[2] = ['b', 3] -> ['b', 'b*']
  *          default: 3,         // sets[3] = ['b*']
  *          'c': {
- *                  end: 4,     // sets[4] = ['bc', 3] -> ['bc, 'b*']
+ *                  end: 4,     // sets[4] = ['bc', 3] -> ['bc', 'b*']
  *                  default: 3  // sets[3] = ['b*']
+ *                  '*': {
+ *                      end: 1,     // sets[4] = ['bc', 3] -> ['bc', 'b*']
+ *                      default: 1  // sets[3] = ['b*']
+ *                  }
  *               },
  *          '*': {
  *                  end: 5,     // sets[5] = ['b', 'bc', 3] -> ['b', 'bc', 'b*']
@@ -277,6 +286,10 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  *        },
  *   'c': {
  *          end: 6              // sets[6] = ['c']
+ *          '*': {
+ *                  end: 6,     // sets[6] = ['C']
+ *                  default: 0  // sets[0] = []
+ *               }
  *        },
  *   '*': {
  *          end: 7              // sets[7] = [ 'a', 'b', 'b*', 'bc', 'c' ]
@@ -284,25 +297,19 @@ exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
  * }
  * ```
  *
- * The state is not accepting and has four transitions for 'a', 'b', 'c', and
- * '*'.  If we look at the state following an 'a' transition, we see the state:
- *   `{end: ['a']}`
- * This is an accepting state, if the scope being scanned ends here then it
- * matches the roleId: 'a'.
- *
- * If we look at the state following a 'b' transition we again see an accepting
- * state, but there is also a transition on 'c' to the state '{end: ['c']}`.
- * Another interesting thing with the state following 'b' is that the scope
- * being scanned has matched the roleId: 'b*'. This is indicated with the
- * `prefix: 'b*'` property. This property is intended to indicate that no matter
- * what is matched after this, the roleId: 'b*' have definitely been matched and
- * should be returned. We do this for efficiency, rather than remembering the
- * list of non-terminal roleIds matched so far and creating a state for each
- * unmatched transition. This little hack, also means that we don't need any
- * cycles in our DFA.
+ * If we we don't have an explicit transition we go to default, hence, if the
+ * first character is 'd', the DFA would terminate with 0 as the result, and the
+ * set of roles matched would be sets[0] = []. If the first character is 'b', we
+ * have already matched the role 'b*', and indeed we see that all the "default"
+ * transitions under the 'b' transition would return a set that contains 'b*'.
  *
  * Must be started with:
  *   i = 0, n = roles.length, k = 0, sets = [[]], implied = 0
+ *
+ * The `implied` is the index of entry in sets that is implied. In the sub-tree
+ * under 'b' transition (example above), implied will be 3 (sets[3] = 'b*'). We
+ * use to avoid duplicating sets of roles, and for efficiency as we can
+ * construct entries in sets as [role, implied].
  */
 let generateDFA = (roles, i, n, k, sets, implied) => {
   var state = {default: implied, end: implied};
@@ -404,7 +411,7 @@ exports.generateDFA = generateDFA;
 
 /**
  * Builds a pair {resolver, sets} where sets is a list of lists of roles,
- * and given a scope `resolver(scope)`` returns a list from sets.
+ * and given a scope `resolver(scope)`` returns an index from sets.
  *
  * That definition sounds slightly complicated, it's actually very simple,
  * sets is on the form:
@@ -416,11 +423,15 @@ exports.generateDFA = generateDFA;
  * ]
  * ```
  *
- * And `resolver(scope)` returns `sets[i]` for some `i` s.t. `sets[i]` is the
- * list of roles matched by `scope`. We do it like this, as `sets` may be
- * modified from containing lists of roles, to containing lists of scopes, when
- * we've computed the fixed-point and knows what set of scopes a each role
- * grants both directly and indirectly.
+ * For efficiency we allow sets[i] = [{role}, ..., j] where j < i to be
+ * interpreted as sets[i].concat(sets[j]). By not duplicating we don't have to
+ * resolve `sets[j]` multiple times, even though the set appears in multiple
+ * other sets.
+ *
+ * The `resolver` function returns an index in the sets array, as this allows
+ * us to later create a new sets variable where roles have been expanded to
+ * the scopes they imply, and just like that we can use the `resolver` to go
+ * from scope to expanded scopes.
  */
 let buildResolver = (roles) => {
   // Generate DFA
@@ -507,13 +518,16 @@ let computeFixedPoint = (roles) => {
 
   // Construct impliedRoles
   for(let R of roles) {
-    for(let scope of R.scopes) {
-      for(let role of resolver(scope)) {
-        if (role !== R) {
-          R.impliedRoles.push(role);
+    let expandImpliedRoles = (index) => {
+      sets[index].forEach(r => {
+        if (typeof(r) === 'number') {
+          expandImpliedRoles(r);
+        } else if (!_.includes(R.impliedRoles, r) && r !== R) {
+          R.impliedRoles.push(r);
         }
-      }
-    }
+      });
+    };
+    R.scopes.forEach(scope => expandImpliedRoles(resolver(scope)));
   }
 
   // Construct expandedRoles as a fixed-point by traversing implied roles
@@ -539,6 +553,9 @@ let computeFixedPoint = (roles) => {
     }
     return scopes;
   };
+  // TODO: make this faster with a simple DFS search and a past-waiting list
+  //       this could probably be significantly faster. Might require some smart
+  //       cycle handling logic, but it seems fairly feasible.
   //console.time("traveseImpliedRoles");
   // For each role we compute the fixed-point the set of scopes the role expands
   // to when all implied roles are considered. If roles are ordered
@@ -557,25 +574,31 @@ let computeFixedPoint = (roles) => {
   }
   //console.timeEnd("traveseImpliedRoles");
 
-  // Update results sets of resolver to be scopes
-  //console.time("Compute scopes for sets[i]");
-  // TODO: This could greatly optimized by allowed nested arrays in
-  // buildResolver(), for details see the comment in buildResolver().
+  // Compute scopeSets[i] set of scopes implied by role in sets[i], so that
+  // the resolver can be used to resolve scopes
+  //console.time("Compute scopeSets");
   let n = sets.length;
+  let scopeSets = new Array(n);
   for (let i = 0; i < n; i++) {
-    // At this state sets[i] is a list of roles, we now change that such that
-    // sets[i] is a list of scopes that those roles would grant.
     let scopes = [];
-    for(let r of sets[i]) {
-      scopes = mergeScopeSets(scopes, r.expandedScopes);
-    }
-    sets[i] = scopes;
+    //TODO: make this faster using a min-heap in mergeScopeSets so that can
+    //      merge multiple sets at the same time.
+    sets[i].map(r => {
+      if (typeof(r) === 'number') {
+        assert(r < i, "What!!!");
+        return scopeSets[r]; // we know that r < i, hence, this works
+      }
+      return r.expandedScopes;
+    }).forEach(s => {
+      scopes = mergeScopeSets(scopes, s);
+    });
+    scopeSets[i] = scopes;
   }
-  //console.timeEnd("Compute scopes for sets[i]");
+  //console.timeEnd("Compute scopeSets");
 
-  // As we've modified sets[i] for each i, we now have that resolver(scope)
-  // returns a list of scopes granted by scope.
-  return resolver;
+  // As we've scopeSets[i] to be expanded scopes from roles in sets[i], we now
+  // have that scopeSets[resolver(scope)] a list of scopes granted by scope.
+  return (scope) => scopeSets[resolver(scope)];
 };
 
 // Export computeFixedPoint
