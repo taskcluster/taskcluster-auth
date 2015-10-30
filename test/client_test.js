@@ -78,6 +78,12 @@ suite('api (client)', function() {
     await helper.events.waitFor('e1');
   });
 
+  this.pending = true;
+  test("auth.createRole and use client", async () => {
+    //TODO,
+  });
+  this.pending = false;
+
   test("auth.resetAccessToken", async () => {
     await helper.events.listenFor('e1', helper.authEvents.clientUpdated({
       clientId:  'nobody'
