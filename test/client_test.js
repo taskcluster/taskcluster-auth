@@ -53,6 +53,7 @@ suite('api (client)', function() {
     });
   });
 
+  let accessToken = null; // for use in later test cases
   test("auth.createClient", async () => {
     await helper.events.listenFor('e1', helper.authEvents.clientCreated({
       clientId:  'nobody'
@@ -63,6 +64,7 @@ suite('api (client)', function() {
     let client = await helper.auth.createClient('nobody', {
       expires, description,
     });
+    accessToken = client.accessToken;
     assume(client.description).equals(description);
     assume(client.expires).equals(expires.toJSON());
     assume(client.accessToken).is.a('string');
@@ -78,11 +80,26 @@ suite('api (client)', function() {
     await helper.events.waitFor('e1');
   });
 
-  this.pending = true;
   test("auth.createRole and use client", async () => {
-    //TODO,
+    // Clean up from any dirty tests
+    await helper.auth.deleteRole('client-id:nobody');
+
+    // Create a new role
+    let role = await helper.auth.createRole('client-id:nobody', {
+      description: 'test prefix role',
+      scopes: ['myapi:*']
+    });
+
+    // Create testClient
+    var testClient = new helper.TestClient({
+      baseUrl: helper.testBaseUrl,
+      credentials: {
+        clientId: 'nobody',
+        accessToken,
+      },
+    });
+    await testClient.resource();
   });
-  this.pending = false;
 
   test("auth.resetAccessToken", async () => {
     await helper.events.listenFor('e1', helper.authEvents.clientUpdated({
