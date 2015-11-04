@@ -30,7 +30,7 @@ var renderIndex = async function(authFailed, req, res) {
     credentials = taskcluster.createTemporaryCredentials({
       start:        new Date(),
       // good for three days
-      expiry:       new Date(new Date().getTime() + 3 * 24 * 60 * 60),
+      expiry:       new Date(new Date().getTime() + 3 * 24 * 60 * 60 * 1000),
       // use the client's role without expanding them, so that the temporary
       // credentials track changes to roles
       scopes:       ['assume:client-id:' + client.clientId],
