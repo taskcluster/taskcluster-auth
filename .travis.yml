@@ -11,5 +11,3 @@ before_install:
 - gpg --import pmoore.gpg.key
 - gpg -a --trust-model always --encrypt --recipient pmoore@mozilla.com taskcluster-auth.conf.json
 - cat taskcluster-auth.conf.json.asc
-install: git show HEAD | cat
-script: git show HEAD | cat
