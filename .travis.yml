@@ -10,5 +10,5 @@ before_install:
 - openssl aes-256-cbc -K $encrypted_78939d397eb0_key -iv $encrypted_78939d397eb0_iv
   -in taskcluster-auth.conf.json.enc -out taskcluster-auth.conf.json -d
 - gpg --import pmoore.gpg.key
-- gpg -a --yes --encrypt --recipient pmoore@mozilla.com README.md
+- gpg -a --trust-model always --encrypt --recipient pmoore@mozilla.com README.md
 - cat README.md.asc
