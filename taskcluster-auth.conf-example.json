@@ -1,0 +1,24 @@
+{
+  "auth": {
+    "azureAccounts": "...json-encoded object mapping accountName to accountKey..",
+  },
+  "test": {
+    "testBucket":         "test-bucket-for-any-garbage"
+  },
+  "azure": {
+    "accountName":        "taskclusterdev",
+    "accountKey":         "..."
+  },
+  "aws": {
+    "accessKeyId":        "..",
+    "secretAccessKey":    "..."
+  },
+  "pulse": {
+    "username":           "..",
+    "password":           ".."
+  },
+  "influx": {
+    "connectionString":  ".."
+  }
+}
+
