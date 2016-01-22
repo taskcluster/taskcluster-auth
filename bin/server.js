@@ -132,6 +132,16 @@ let load = loader({
   api: {
     requires: ['cfg', 'Client', 'Role', 'validator', 'publisher', 'resolver', 'drain'],
     setup: async ({cfg, Client, Role, validator, publisher, resolver, drain}) => {
+      // Set up the Azure tables
+      await Role.ensureTable();
+      await Client.ensureTable();
+
+      // set up the root access token if necessary
+      if (cfg.get('auth:rootAccessToken')) {
+        await Client.ensureRootClient(cfg.get('auth:rootAccessToken'));
+        await Role.ensureRootRole();
+      }
+
       // Load everything for resolver
       await resolver.setup({
         Client, Role,
@@ -166,18 +176,8 @@ let load = loader({
   },
 
   server: {
-    requires: ['cfg', 'Client', 'Role', 'api'],
-    setup: async ({cfg, Client, Role, api}) => {
-      // Set up the Azure tables
-      await Role.ensureTable();
-      await Client.ensureTable();
-
-      // set up the root access token if necessary
-      if (cfg.get('auth:rootAccessToken')) {
-        await Client.ensureRootClient(cfg.get('auth:rootAccessToken'));
-        await Role.ensureRootRole();
-      }
-
+    requires: ['cfg', 'api'],
+    setup: async ({cfg, api}) => {
       // Create app
       let serverApp = app({
         port:           Number(process.env.PORT || cfg.get('server:port')),

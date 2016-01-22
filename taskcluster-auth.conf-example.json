@@ -6,7 +6,7 @@
     "testBucket":         "test-bucket-for-any-garbage"
   },
   "azure": {
-    "accountName":        "taskclusterdev",
+    "accountName":        "taskclusterdev (this is optional; will run in memory if omitted)",
     "accountKey":         "..."
   },
   "aws": {
@@ -18,7 +18,7 @@
     "password":           ".."
   },
   "influx": {
-    "connectionString":  ".."
+    "connectionString":  ".. optional; omit if you don't have one .."
   }
 }
 
