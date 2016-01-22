@@ -44,7 +44,6 @@ mocha.before(async () => {
   // Create client for working with API
   helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
   var reference = v1.reference({baseUrl: helper.baseUrl});
-  require('fs').writeFileSync("ref.json", JSON.stringify(reference, null, 2));
   helper.Auth = taskcluster.createClient(reference);
   helper.auth = new helper.Auth({
     baseUrl:          helper.baseUrl,
