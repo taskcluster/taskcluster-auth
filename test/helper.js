@@ -6,7 +6,7 @@ var base        = require('taskcluster-base');
 var v1          = require('../auth/v1');
 var taskcluster = require('taskcluster-client');
 var mocha       = require('mocha');
-var server      = require('../bin/server');
+var serverLoad  = require('../bin/server');
 var exchanges   = require('../auth/exchanges');
 var testserver  = require('./testserver');
 
@@ -38,7 +38,9 @@ helper.events = new base.testing.PulseTestReceiver(cfg.get('pulse'), mocha);
 
 var webServer = null, testServer;
 mocha.before(async () => {
-  webServer = await server('test');
+  webServer = await serverLoad('server', {
+    'profile': 'test',
+  });
   webServer.setTimeout(1500);
 
   // Create client for working with API
