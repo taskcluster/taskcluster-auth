@@ -9,7 +9,6 @@ var mocha       = require('mocha');
 var server      = require('../bin/server');
 var exchanges   = require('../auth/exchanges');
 var testserver  = require('./testserver');
-var slugid      = require('slugid');
 
 // Load configuration
 var cfg = base.config({
@@ -23,10 +22,11 @@ var helper = module.exports = {};
 
 helper.cfg = cfg;
 helper.testaccount = _.keys(JSON.parse(cfg.get('auth:azureAccounts')))[0];
-helper.rootAccessToken = slugid.v4() + slugid.v4();
+helper.rootAccessToken = cfg.get('auth:rootAccessToken');
 
 // Skip tests if no AWS credentials is configured
 if (!cfg.get('azure:accountKey') ||
+    !cfg.get('auth:rootAccessToken') ||
     !cfg.get('influx:connectionString') ||
     !cfg.get('pulse:password')) {
   console.log("Skip tests for due to missing credentials!");
@@ -50,7 +50,7 @@ mocha.before(async () => {
     baseUrl:          helper.baseUrl,
     credentials: {
       clientId:       'root',
-      accessToken:    helper.rootAccessToken,
+      accessToken:    cfg.get('auth:rootAccessToken')
     }
   });
 
@@ -63,7 +63,7 @@ mocha.before(async () => {
     client:     testClient,
   } = await testserver({
     authBaseUrl: helper.baseUrl,
-    rootAccessToken: helper.rootAccessToken,
+    rootAccessToken: cfg.get('auth:rootAccessToken'),
   });
 
   testServer = testServer_;
