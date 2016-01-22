@@ -11,6 +11,7 @@ var ScopeResolver = require('../auth/scoperesolver');
 var taskcluster   = require('taskcluster-client');
 var url           = require('url');
 var loader        = require('taskcluster-lib-loader');
+var app           = require('taskcluster-lib-app');
 
 // Create component loader
 let load = loader({
@@ -178,16 +179,16 @@ let load = loader({
       }
 
       // Create app
-      let app = base.app({
+      let serverApp = app({
         port:           Number(process.env.PORT || cfg.get('server:port')),
         env:            cfg.get('server:env'),
         forceSSL:       cfg.get('server:forceSSL'),
         trustProxy:     cfg.get('server:trustProxy')
       });
 
-      app.use('/v1', api);
+      serverApp.use('/v1', api);
 
-      app.get('/', (req, res) => {
+      serverApp.get('/', (req, res) => {
         res.redirect(302, url.format({
           protocol:       'https',
           host:           'login.taskcluster.net',
@@ -199,7 +200,7 @@ let load = loader({
       });
 
       // Create server
-      return app.createServer();
+      return serverApp.createServer();
     }
   },
 }, ['profile']);
