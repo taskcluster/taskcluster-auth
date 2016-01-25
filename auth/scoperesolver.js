@@ -122,6 +122,23 @@ class ScopeResolver extends events.EventEmitter {
     return this._reloadDone = this._reloadDone.catch(() => {}).then(reloader);
   }
 
+  _entityToClient(client) {
+    let lastUsedDate = new Date(client.details.lastDateUsed);
+    let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
+    return {
+      updateLastUsed: lastUsedDate < minLastUsed,
+
+      clientId:       client.clientId,
+      accessToken:    client.accessToken,
+      description:    client.description,
+      expires:        client.expires,
+      details:        _.clone(client.details),
+      _scopes:        client.scopes,
+      // scopes and expandedScopes are added by _computeFixedPoint
+      disabled:       !!client.disabled,
+    };
+  }
+
   reloadClient(clientId) {
     return this._syncReload(async () => {
       let client = await this._Client.load({clientId}, true);
@@ -129,16 +146,7 @@ class ScopeResolver extends events.EventEmitter {
       this._clients = this._clients.filter(c => c.clientId !== clientId);
       // If a client was loaded, add it back
       if (client) {
-        // For reasoning on structure, see reload()
-        let lastUsedDate = new Date(client.details.lastDateUsed);
-        let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
-        this._clients.push({
-          clientId:       client.clientId,
-          accessToken:    client.accessToken,
-          updateLastUsed: lastUsedDate < minLastUsed,
-          scopes:         client.scopes,
-          disabled:       client.disabled
-        });
+        this._clients.push(this._entityToClient(client));
       }
       this._computeFixedPoint();
     });
@@ -170,24 +178,10 @@ class ScopeResolver extends events.EventEmitter {
       let clients = [];
       let roles   = [];
       await Promise.all([
-        // Load all clients on a simplified form:
-        // {clientId, accessToken, updateLastUsed}
+        // Load all clients into memory, adding some metadata
         // _computeFixedPoint() will construct the `_clientCache` object
         this._Client.scan({}, {
-          handler: client => {
-            let lastUsedDate = new Date(client.details.lastDateUsed);
-            let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
-            clients.push({
-              clientId:       client.clientId,
-              accessToken:    client.accessToken,
-              // Note that lastUsedDate should be updated, if it's out-dated by
-              // more than 6 hours.
-              // (cheap way to know if it's been used recently)
-              updateLastUsed: lastUsedDate < minLastUsed,
-              scopes:         client.scopes,
-              disabled:       client.disabled
-            });
-          }
+          handler: client => clients.push(this._entityToClient(client)),
         }),
         // Load all roles on a simplified form: {roleId, scopes}
         // _computeFixedPoint() will later add the `expandedScopes` property
@@ -218,6 +212,35 @@ class ScopeResolver extends events.EventEmitter {
     });
   }
 
+  _clientToJson(client) {
+    return {
+      clientId:       client.clientId,
+      description:    client.description,
+      expires:        client.expires.toJSON(),
+      created:        client.details.created,
+      lastModified:   client.details.lastModified,
+      lastDateUsed:   client.details.lastDateUsed,
+      lastRotated:    client.details.lastRotated,
+      scopes:         client._scopes,
+      expandedScopes: client.expandedScopes,
+      disabled:       client.disabled
+    };
+  }
+  /** Return all clients as JSON, keyed by clientId; this is a shortcut to
+   * `Client.scan`, since we already have all of that information cached in
+   * memory.
+   */
+  jsonClients() {
+    return this._clients.map((client) => this._clientToJson(client));
+  }
+
+  jsonClient(clientId) {
+    let client = this._clientCache[clientId];
+    if (client) {
+      return this._clientToJson(client);
+    }
+  }
+
   /** Compute fixed point over this._roles, and construct _clientCache */
   _computeFixedPoint() {
     //console.time("_computeFixedPoint");
@@ -228,7 +251,7 @@ class ScopeResolver extends events.EventEmitter {
     this._clientCache = {};
     for (let client of this._clients) {
       var scopes = this.resolve(
-          ['assume:client-id:' + client.clientId].concat(client.scopes));
+          ['assume:client-id:' + client.clientId].concat(client._scopes));
       client.scopes = scopes; // for createSignatureValidator compatibility
       client.expandedScopes = scopes;
       this._clientCache[client.clientId] = client;
@@ -245,6 +268,7 @@ class ScopeResolver extends events.EventEmitter {
         client.details.lastDateUsed = new Date().toJSON();
       }
     });
+    this._clientCache[clientId].details = _.clone(client.details);
   }
 
   /**

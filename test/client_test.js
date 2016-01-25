@@ -19,6 +19,7 @@ suite('api (client)', function() {
   test("auth.client (no credentials)", async () => {
     await (new helper.Auth()).client('root');
   });
+
   const CLIENT_ID = 'nobody/sds:ad_asd/df-sAdSfchsdfsdfs';
   test("auth.deleteClient (non-existent)", async () => {
     await helper.events.listenFor('e1', helper.authEvents.clientDeleted({
@@ -51,6 +52,15 @@ suite('api (client)', function() {
     }, err => {
       // Expected error
     });
+  });
+
+  test("delete all current clients", async function() {
+    let clients = await helper.auth.listClients();
+    await Promise.all(clients.map((client) => {
+      if (client.clientId !== "root") {
+        helper.auth.deleteClient(client.clientId);
+      }
+    }));
   });
 
   test("auth.createClient (no scopes)", async () => {
@@ -88,29 +98,40 @@ suite('api (client)', function() {
     var expires = new Date();
     var description = "Test client...";
     var scopes = ["scope1", "scope2"];
-    let client = await helper.auth.createClient(CLIENT_ID, {
-      expires, description, scopes,
-    });
-    assume(client.description).equals(description);
-    assume(client.expires).equals(expires.toJSON());
-    assume(client.accessToken).is.a('string');
-    assume(client.scopes).contains('scope1');
-    assume(client.scopes).contains('scope2');
-    assume(client.scopes).not.contains('assume:client-id:' + CLIENT_ID);
-    assume(client.expandedScopes).contains('scope1');
-    assume(client.expandedScopes).contains('scope2');
-    assume(client.expandedScopes).contains('assume:client-id:' + CLIENT_ID);
+    let checkClient = (client, options) => {
+      assume(client.clientId).to.equal(CLIENT_ID);
+      if (options.hasToken) {
+        assume(client.accessToken).is.a('string');
+      } else {
+        assume(client).has.not.own('accessToken');
+      }
+      assume(client.description).equals(description);
+      assume(client.expires).equals(expires.toJSON());
+      assume(client.created).is.a('string');
+      assume(client.lastModified).is.a('string');
+      assume(client.lastDateUsed).is.a('string');
+      assume(client.lastRotated).is.a('string');
+      assume(client.scopes).contains('scope1');
+      assume(client.scopes).contains('scope2');
+      assume(client.scopes).not.contains('assume:client-id:' + CLIENT_ID);
+      assume(client.expandedScopes).contains('scope1');
+      assume(client.expandedScopes).contains('scope2');
+      assume(client.expandedScopes).contains('assume:client-id:' + CLIENT_ID);
+      assume(client.disabled).to.equal(false);
+    };
 
-    let client2 = await helper.auth.client(CLIENT_ID);
-    assume(client2.description).equals(description);
-    assume(client2.expires).equals(expires.toJSON());
-    assume(client2).has.not.own('accessToken');
-    assume(client2.scopes).contains('scope1');
-    assume(client2.scopes).contains('scope2');
-    assume(client2.scopes).not.contains('assume:client-id:' + CLIENT_ID);
-    assume(client2.expandedScopes).contains('scope1');
-    assume(client2.expandedScopes).contains('scope2');
-    assume(client2.expandedScopes).contains('assume:client-id:' + CLIENT_ID);
+    checkClient(await helper.auth.createClient(CLIENT_ID, {
+      expires, description, scopes,
+    }), {hasToken: true});
+    checkClient(await helper.auth.client(CLIENT_ID), {hasToken: false});
+
+    // find the client in listClients
+    let clients = await helper.auth.listClients();
+    clients.forEach((client) => {
+      if (client.clientId === CLIENT_ID) {
+        checkClient(client, {hasToken: false});
+      }
+    });
 
     await helper.events.waitFor('e1');
   });

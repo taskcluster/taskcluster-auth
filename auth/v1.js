@@ -108,14 +108,8 @@ api.declare({
     "Get a list of all clients."
   ].join('\n')
 }, async function(req, res) {
-
-  // Load all clients
-  let clients = [];
-  await this.Client.scan({}, {
-    handler: client => clients.push(client.json())
-  });
-
-  res.reply(clients);
+  // take advantage of the resolver's cache
+  res.reply(this.resolver.jsonClients());
 });
 
 
@@ -134,14 +128,14 @@ api.declare({
 }, async function(req, res) {
   let clientId = req.params.clientId;
 
-  // Load client
-  let client = await this.Client.load({clientId}, true);
+  // Load client from the resolver's cache
+  let client = this.resolver.jsonClient(clientId);
 
   if (!client) {
     return res.status(404).json({message: "Client not found!"});
   }
 
-  res.reply(client.json());
+  res.reply(client);
 });
 
 
