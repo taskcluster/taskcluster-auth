@@ -83,7 +83,7 @@ Client.ensureRootClient = function(accessToken) {
   // Create client resolving conflicts by overwriting
   return Client.create({
     clientId:         'root',
-    description:      "Automatically created `root` client " +
+    description:      "Automatically created `root` client with star scopes " +
                       "for bootstrapping API access",
     accessToken:      accessToken,
     expires:          taskcluster.fromNow('24 hours'),
@@ -93,7 +93,7 @@ Client.ensureRootClient = function(accessToken) {
       lastDateUsed:   new Date().toJSON(),
       lastRotated:    new Date().toJSON()
     },
-    scopes:           [],
+    scopes:           ['*'],
     disabled:         0,
   }, true);
 };
@@ -135,29 +135,6 @@ Role.prototype.json = function() {
     scopes:         this.scopes,
     expandedScopes: this.resolver.resolve(scopes),
   };
-};
-
-/**
- * Ensure the role: client-id:root -> ['*'] exists
- *
- * Should only be called if the app is configured with a rootAccessToken.
- * Otherwise, app should assume whatever is in the table storage is the
- * root access token, and that appropriate role is attached.
- *
- * Basically, this is for bootstrapping only.
- */
-Role.ensureRootRole = function() {
-  let Role = this;
-  return Role.create({
-    roleId:       'client-id:root',
-    description:  "Automatically created role for bootstrapping the `root` "+
-                  "client.",
-    scopes:       ['*'],
-    details: {
-      created:        new Date().toJSON(),
-      lastModified:   new Date().toJSON()
-    }
-  }, true);
 };
 
 // Export Role
