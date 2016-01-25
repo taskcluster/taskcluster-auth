@@ -18,15 +18,15 @@ var api = new base.API({
     "",
     "### Clients",
     "The authentication service manages _clients_, at a high-level each client",
-    "consists of a `clientId`, an `accessToken`, expiration and description.",
+    "consists of a `clientId`, an `accessToken`, scopes, and some metadata.",
     "The `clientId` and `accessToken` can be used for authentication when",
     "calling TaskCluster APIs.",
     "",
-    "Each client is assigned a single scope on the form:",
-    "`assume:client-id:<clientId>`, this scope doesn't really do much on its",
-    "own. But when you dive into the roles section you'll see that you can",
-    "create a role: `client-id:<clientId>` that assigns scopes to the client.",
-    "This way it's easy to audit all scope assignments, by only listing roles.",
+    "The client's scopes control the client's access to TaskCluster resources.",
+    "The scopes are *expanded* by substituting roles, as defined below.",
+    "Every client has an implicit scope named `assume:client-id:<clientId>`,",
+    "allowing additional access to be granted to the client without directly",
+    "editing the client's scopes.",
     "",
     "### Roles",
     "A _role_ consists of a `roleId`, a set of scopes and a description.",
@@ -167,13 +167,16 @@ api.declare({
     "",
     "If a client with the same `clientId` already exists this operation will",
     "fail. Use `updateClient` if you wish to update an existing client.",
+    "",
+    "The caller's scopes must satisfy `scopes`."
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
   let input     = req.body;
+  let scopes    = input.scopes || [];
 
   // Check scopes
-  if (!req.satisfies({clientId})) {
+  if (!req.satisfies({clientId}) || !req.satisfies([scopes])) {
     return;
   }
 
@@ -183,6 +186,8 @@ api.declare({
     description:  input.description,
     accessToken:  accessToken,
     expires:      new Date(input.expires),
+    scopes:       scopes || [],
+    disabled:     0,
     details: {
       created:      new Date().toJSON(),
       lastModified: new Date().toJSON(),
@@ -296,9 +301,11 @@ api.declare({
   stability:  'stable',
   title:      "Update Client",
   description: [
-    "Update an exisiting client. This is really only useful for changing the",
-    "description and expiration, as you won't be allowed to the `clientId`",
-    "or `accessToken`.",
+    "Update an exisiting client. The `clientId` and `accessToken` cannot be",
+    "updated, but `scopes` can be modified.  The caller's scopes must",
+    "satisfy all scopes being added to the client in the update operation.",
+    "If no scopes are given in the request, the client's scopes remain",
+    "unchanged"
   ].join('\n')
 }, async function(req, res) {
   let clientId  = req.params.clientId;
@@ -315,11 +322,19 @@ api.declare({
     return res.status(404).json({message: "Client not found!"});
   }
 
-  // Reset accessToken
+  let added = _.without.apply(_, [input.scopes].concat(client.scopes));
+  if (!req.satisfies([added])) {
+    return;
+  }
+
+  // Update client
   await client.modify(client => {
     client.description = input.description;
     client.expires = new Date(input.expires);
     client.details.lastModified = new Date().toJSON();
+    if (input.scopes) {
+      client.scopes = input.scopes;
+    }
   });
 
   // Publish message on pulse to clear caches...
@@ -637,7 +652,9 @@ api.declare({
         lastModified: new Date().toJSON(),
         lastDateUsed: new Date().toJSON(),
         lastRotated:  new Date().toJSON()
-      }
+      },
+      scopes:         [],
+      disabled:       0
     }, true).then(client => {
       return this.publisher.clientCreated({clientId: client.clientId});
     });

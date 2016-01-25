@@ -21,12 +21,14 @@ class ScopeResolver extends events.EventEmitter {
     assert(/^ *-/.test(options.maxLastUsedDelay),
            'maxLastUsedDelay must be negative');
 
-    // List of client objects on the form:
+    // List of enabled client objects on the form:
     // {
     //    clientId, accessToken,
+    //    scopes: [...],                // Scopes (as set in the table)
     //    expandedScopes: [...],        // Scopes (including indirect scopes)
     //    updateLastUsed: true | false  // true, if lastUsed should be updated
     // }
+    // disabled clients are excluded from this list.
     this._clients = [];
     // List of role objects on the form:
     // {roleId: '...', scopes: [...], expandedScopes: [...]}
@@ -125,8 +127,8 @@ class ScopeResolver extends events.EventEmitter {
       let client = await this._Client.load({clientId}, true);
       // Always remove it
       this._clients = this._clients.filter(c => c.clientId !== clientId);
-      // If a client was loaded add it back
-      if (client) {
+      // If a client was loaded and not disabled, add it back
+      if (client && !client.disabled) {
         // For reasoning on structure, see reload()
         let lastUsedDate = new Date(client.details.lastDateUsed);
         let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
@@ -134,7 +136,8 @@ class ScopeResolver extends events.EventEmitter {
           clientId:       client.clientId,
           accessToken:    client.accessToken,
           expires:        client.expires,
-          updateLastUsed: lastUsedDate < minLastUsed
+          updateLastUsed: lastUsedDate < minLastUsed,
+          scopes:         client.scopes
         });
       }
       this._computeFixedPoint();
@@ -172,6 +175,9 @@ class ScopeResolver extends events.EventEmitter {
         // _computeFixedPoint() will construct the `_clientCache` object
         this._Client.scan({}, {
           handler: client => {
+            if (client.disabled) {
+              return;
+            }
             let lastUsedDate = new Date(client.details.lastDateUsed);
             let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
             clients.push({
@@ -181,7 +187,8 @@ class ScopeResolver extends events.EventEmitter {
               // Note that lastUsedDate should be updated, if it's out-dated by
               // more than 6 hours.
               // (cheap way to know if it's been used recently)
-              updateLastUsed: lastUsedDate < minLastUsed
+              updateLastUsed: lastUsedDate < minLastUsed,
+              scopes:         client.scopes
             });
           }
         }),
@@ -223,7 +230,8 @@ class ScopeResolver extends events.EventEmitter {
     // Construct client cache
     this._clientCache = {};
     for (let client of this._clients) {
-      var scopes = this.resolve(['assume:client-id:' + client.clientId]);
+      var scopes = this.resolve(
+          ['assume:client-id:' + client.clientId].concat(client.scopes));
       client.scopes = scopes; // for createSignatureValidator compatibility
       client.expandedScopes = scopes;
       this._clientCache[client.clientId] = client;
