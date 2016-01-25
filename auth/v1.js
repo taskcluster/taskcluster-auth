@@ -347,6 +347,99 @@ api.declare({
 });
 
 
+/** Enable client */
+api.declare({
+  method:     'post',
+  route:      '/clients/:clientId/enable',
+  name:       'enableClient',
+  input:      undefined,
+  output:     'get-client-response.json#',
+  scopes:     [['auth:enable-client:<clientId>']],
+  deferAuth:  true,
+  stability:  'stable',
+  title:      "Enable Client",
+  description: [
+    "Enable a client that was disabled with `disableClient`.  If the client",
+    "is already enabled, this does nothing.",
+    "",
+    "This is typically used by identity providers to re-enable clients that",
+    "had been disabled when the corresponding identity's scopes changed."
+  ].join('\n')
+}, async function(req, res) {
+  let clientId  = req.params.clientId;
+
+  // Check scopes
+  if (!req.satisfies({clientId})) {
+    return;
+  }
+
+  // Load client
+  let client = await this.Client.load({clientId}, true);
+  if (!client) {
+    return res.status(404).json({message: "Client not found!"});
+  }
+
+  // Update client
+  await client.modify(client => {
+    client.disabled = 0;
+  });
+
+  // Publish message on pulse to clear caches...
+  await Promise.all([
+    this.publisher.clientUpdated({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
+
+  return res.reply(client.json());
+});
+
+
+/** Disable client */
+api.declare({
+  method:     'post',
+  route:      '/clients/:clientId/disable',
+  name:       'disableClient',
+  input:      undefined,
+  output:     'get-client-response.json#',
+  scopes:     [['auth:enable-client:<clientId>']],
+  deferAuth:  true,
+  stability:  'stable',
+  title:      "Enable Client",
+  description: [
+    "Disable a client.  If the client is already disabled, this does nothing.",
+    "",
+    "This is typically used by identity providers to disable clients when the",
+    "corresponding identity's scopes no longer satisfy the client's scopes."
+  ].join('\n')
+}, async function(req, res) {
+  let clientId  = req.params.clientId;
+
+  // Check scopes
+  if (!req.satisfies({clientId})) {
+    return;
+  }
+
+  // Load client
+  let client = await this.Client.load({clientId}, true);
+  if (!client) {
+    return res.status(404).json({message: "Client not found!"});
+  }
+
+  // Update client
+  await client.modify(client => {
+    client.disabled = 1;
+  });
+
+  // Publish message on pulse to clear caches...
+  await Promise.all([
+    this.publisher.clientUpdated({clientId}),
+    this.resolver.reloadClient(clientId)
+  ]);
+
+  return res.reply(client.json());
+});
+
+
 /** Delete client */
 api.declare({
   method:     'delete',
