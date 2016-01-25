@@ -21,7 +21,7 @@ suite('user stories', function() {
     var identityProvider,
         identityProviderToken,
         charlene,
-        travis_tests;
+        travisTests;
 
     test("add a client for the identity provider", async () => {
       let idp = await helper.auth.createClient('test-users', {
@@ -31,6 +31,7 @@ suite('user stories', function() {
           'auth:create-client:test-users/*',
           'auth:update-client:test-users/*',
           'auth:enable-client:test-users/*',
+          'auth:disable-client:test-users/*',
           'auth:delete-client:test-users/*',
           'auth:reset-access-token:test-users/*',
           'assume:test-role:*',
@@ -75,12 +76,19 @@ suite('user stories', function() {
     });
 
     test("charlene creates permanent credentials for her tests", async () => {
-      travis_tests = await charlene.createClient('test-users/charlene/travis-tests', {
+      let travisClient = await charlene.createClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"), // N.B. longer than temp creds
         scopes: [
           'assume:test-role:role1',
         ],
+      });
+
+      travisTests = new helper.Auth({
+        credentials: {
+          clientId: 'test-users/charlene/travis-tests',
+          accessToken: travisClient.accessToken
+        }
       });
     });
 
@@ -88,7 +96,7 @@ suite('user stories', function() {
 
     test("charlene tries to grant role3 (which she does not have) to her client", async () => {
       try {
-        travis_tests = await charlene.updateClient('test-users/charlene/travis-tests', {
+        await charlene.updateClient('test-users/charlene/travis-tests', {
           description: "Permacred created by test",
           expires: taskcluster.fromNow("3 hours"),
           scopes: [
@@ -103,17 +111,18 @@ suite('user stories', function() {
     });
 
     test("charlene grants role2 and removes role1", async () => {
-      travis_tests = await charlene.updateClient('test-users/charlene/travis-tests', {
+      let newClient = await charlene.updateClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"),
         scopes: [
           'assume:test-role:role2',
         ],
       });
+      assume(newClient.scopes).to.contain('assume:test-role:role2');
     });
 
     test("root grants role3", async () => {
-      travis_tests = await helper.auth.updateClient('test-users/charlene/travis-tests', {
+      let newClient = await helper.auth.updateClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"),
         scopes: [
@@ -124,7 +133,7 @@ suite('user stories', function() {
     });
 
     test("charlene revokes role3", async () => {
-      travis_tests = await charlene.updateClient('test-users/charlene/travis-tests', {
+      let newClient = await charlene.updateClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"),
         scopes: [
@@ -134,7 +143,7 @@ suite('user stories', function() {
     });
 
     test("root grants role3 again", async () => {
-      travis_tests = await helper.auth.updateClient('test-users/charlene/travis-tests', {
+      let newClient = await helper.auth.updateClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"),
         scopes: [
@@ -145,7 +154,7 @@ suite('user stories', function() {
 
     // TODO: bug 1242473
     test.skip("charlene replaces role3 with one of its constituent scopes", async () => {
-      travis_tests = await charlene.updateClient('test-users/charlene/travis-tests', {
+      let newClient = await charlene.updateClient('test-users/charlene/travis-tests', {
         description: "Permacred created by test",
         expires: taskcluster.fromNow("3 hours"),
         scopes: [
@@ -153,5 +162,36 @@ suite('user stories', function() {
         ],
       });
     });
+
+    test("A disabled travis-tests client can't do things anymore", async function() {
+      // give the user a scope we can use as a probe
+      await helper.auth.updateClient('test-users/charlene/travis-tests', {
+        description: "Permacred created by test",
+        expires: taskcluster.fromNow("3 hours"),
+        scopes: [
+          'auth:delete-client:test-users/charlene/travis-tests/*',
+        ],
+      });
+
+      // should succeed
+      await travisTests.deleteClient('test-users/charlene/travis-tests/foo');
+
+      // disable
+      await identityProvider.disableClient('test-users/charlene/travis-tests');
+
+      // should fail
+      await travisTests.deleteClient('test-users/charlene/travis-tests/foo').then(() => {
+        assert(false, "expected an error!");
+      }, err => {
+        assert(err.statusCode === 401, "expected 401");
+      });
+
+      // enable
+      await identityProvider.enableClient('test-users/charlene/travis-tests');
+
+      // should succeed
+      await travisTests.deleteClient('test-users/charlene/travis-tests/foo');
+    });
+
   });
 });
