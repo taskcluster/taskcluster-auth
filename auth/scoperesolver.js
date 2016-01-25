@@ -21,14 +21,14 @@ class ScopeResolver extends events.EventEmitter {
     assert(/^ *-/.test(options.maxLastUsedDelay),
            'maxLastUsedDelay must be negative');
 
-    // List of enabled client objects on the form:
+    // List of client objects on the form:
     // {
     //    clientId, accessToken,
     //    scopes: [...],                // Scopes (as set in the table)
+    //    disabled: true | false,       // If true, client is disabled
     //    expandedScopes: [...],        // Scopes (including indirect scopes)
     //    updateLastUsed: true | false  // true, if lastUsed should be updated
     // }
-    // disabled clients are excluded from this list.
     this._clients = [];
     // List of role objects on the form:
     // {roleId: '...', scopes: [...], expandedScopes: [...]}
@@ -127,8 +127,8 @@ class ScopeResolver extends events.EventEmitter {
       let client = await this._Client.load({clientId}, true);
       // Always remove it
       this._clients = this._clients.filter(c => c.clientId !== clientId);
-      // If a client was loaded and not disabled, add it back
-      if (client && !client.disabled) {
+      // If a client was loaded, add it back
+      if (client) {
         // For reasoning on structure, see reload()
         let lastUsedDate = new Date(client.details.lastDateUsed);
         let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
@@ -136,7 +136,8 @@ class ScopeResolver extends events.EventEmitter {
           clientId:       client.clientId,
           accessToken:    client.accessToken,
           updateLastUsed: lastUsedDate < minLastUsed,
-          scopes:         client.scopes
+          scopes:         client.scopes,
+          disabled:       client.disabled
         });
       }
       this._computeFixedPoint();
@@ -174,9 +175,6 @@ class ScopeResolver extends events.EventEmitter {
         // _computeFixedPoint() will construct the `_clientCache` object
         this._Client.scan({}, {
           handler: client => {
-            if (client.disabled) {
-              return;
-            }
             let lastUsedDate = new Date(client.details.lastDateUsed);
             let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
             clients.push({
@@ -186,7 +184,8 @@ class ScopeResolver extends events.EventEmitter {
               // more than 6 hours.
               // (cheap way to know if it's been used recently)
               updateLastUsed: lastUsedDate < minLastUsed,
-              scopes:         client.scopes
+              scopes:         client.scopes,
+              disabled:       client.disabled
             });
           }
         }),
@@ -269,8 +268,12 @@ class ScopeResolver extends events.EventEmitter {
       clientLoader: async (clientId) => {
         let client = this._clientCache[clientId];
         if (!client) {
-          throw new Error("Client with clientId: '" + clientId + "' not found");
+          throw new Error("Client with clientId '" + clientId + "' not found");
         }
+        if (client.disabled) {
+          throw new Error("Client with clientId '" + clientId + "' is disabled");
+        }
+
         if (client.updateLastUsed) {
           client.updateLastUsed = false;
           this._updateLastUsed(clientId).catch(err => this.emit('error', err));
