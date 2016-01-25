@@ -247,6 +247,24 @@ suite('api (client)', function() {
     assume(client2.expandedScopes).contains('assume:client-id:' + CLIENT_ID);
   });
 
+  test("auth.disableClient", async () => {
+    let client = await helper.auth.disableClient(CLIENT_ID);
+    assume(client.disabled).equals(true);
+    client = await helper.auth.client(CLIENT_ID);
+    assume(client.disabled).equals(true);
+    client = await helper.auth.disableClient(CLIENT_ID);
+    assume(client.disabled).equals(true);
+  });
+
+  test("auth.enableClient", async () => {
+    let client = await helper.auth.enableClient(CLIENT_ID);
+    assume(client.disabled).equals(false);
+    client = await helper.auth.client(CLIENT_ID);
+    assume(client.disabled).equals(false);
+    client = await helper.auth.enableClient(CLIENT_ID);
+    assume(client.disabled).equals(false);
+  });
+
   test("auth.deleteClient", async () => {
     await helper.events.listenFor('e1', helper.authEvents.clientDeleted({
       clientId:  CLIENT_ID
