@@ -151,4 +151,48 @@ suite("Remote Signature Validation", function() {
       assert(err.statusCode === 401, "expected 401");
     });
   });
+
+  test("auth with non-root user", async () => {
+    var clientId = slugid.v4();
+    var result = await helper.auth.createClient(clientId, {
+      scopes:       ['myapi:*'],
+      expires:      new Date(3000, 1, 1), // far out in the future
+      name:         "test-client",
+      description:  "Client used by automatic tests, file a bug and delete if" +
+                    " you ever see this client!"
+    });
+
+    var myClient = new MyClient({
+      baseUrl,
+      credentials: {
+        clientId:     result.clientId,
+        accessToken:  result.accessToken
+      }
+    });
+    await myClient.resource();
+  });
+
+  test("auth with non-root user (expired)", async () => {
+    var clientId = slugid.v4();
+    var result = await helper.auth.createClient(clientId, {
+      scopes:       ['myapi:*'],
+      expires:      new Date(1998, 1, 1), // far back in the past
+      name:         "test-client",
+      description:  "Client used by automatic tests, file a bug and delete if" +
+                    " you ever see this client!"
+    });
+
+    var myClient = new MyClient({
+      baseUrl,
+      credentials: {
+        clientId:     result.clientId,
+        accessToken:  result.accessToken
+      }
+    });
+    await myClient.resource().then(() => {
+      assert(false, "expected an error!");
+    }, err => {
+      assert(err.statusCode === 401, "expected 401");
+    });
+  });
 });
