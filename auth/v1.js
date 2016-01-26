@@ -715,66 +715,6 @@ api.declare({
 });
 
 
-/** Import clients from JSON */
-api.declare({
-  method:     'post',
-  route:      '/import-clients',
-  name:       'importClients',
-  input:      'exported-clients.json#',
-  scopes:     [
-    ['auth:import-clients', 'auth:create-client', 'auth:credentials']
-  ],
-  stability:  'deprecated',
-  title:      "Import Legacy Clients",
-  description: [
-    "Import client from JSON list, overwriting any clients that already",
-    "exists. Returns a list of all clients imported."
-  ].join('\n')
-}, async function(req, res) {
-  var input = req.body;
-
-  // Create clients
-  await Promise.all(input.map(input => {
-    return this.Client.create({
-      clientId:     input.clientId,
-      accessToken:  input.accessToken,
-      expires:      new Date(input.expires),
-      description:  "### Imported: " + input.name + "\n\n" + input.description,
-      details: {
-        created:      new Date().toJSON(),
-        lastModified: new Date().toJSON(),
-        lastDateUsed: new Date().toJSON(),
-        lastRotated:  new Date().toJSON()
-      },
-      scopes:         [],
-      disabled:       0
-    }, true).then(client => {
-      return this.publisher.clientCreated({clientId: client.clientId});
-    });
-  }));
-
-  // Create a role with scopes for each client
-  await Promise.all(input.map(input => {
-    return this.Role.create({
-      roleId:       'client-id:' + input.clientId,
-      description:  "### Imported: " + input.name + "\n\n" + input.description,
-      scopes:       input.scopes,
-      details: {
-        created:      new Date().toJSON(),
-        lastModified: new Date().toJSON()
-      }
-    }, true).then(role => {
-      return this.publisher.roleCreated({roleId: role.roleId});
-    });
-  }));
-
-  // Reload everything in ScopeResolver
-  await this.resolver.reload();
-
-  return res.reply({});
-});
-
-
 /** Check that the server is a alive */
 api.declare({
   method:   'get',
