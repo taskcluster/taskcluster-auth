@@ -401,10 +401,10 @@ api.declare({
   name:       'disableClient',
   input:      undefined,
   output:     'get-client-response.json#',
-  scopes:     [['auth:enable-client:<clientId>']],
+  scopes:     [['auth:disable-client:<clientId>']],
   deferAuth:  true,
   stability:  'stable',
-  title:      "Enable Client",
+  title:      "Disable Client",
   description: [
     "Disable a client.  If the client is already disabled, this does nothing.",
     "",
