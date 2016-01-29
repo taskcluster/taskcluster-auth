@@ -99,20 +99,30 @@ module.exports = api;
 api.declare({
   method:     'get',
   route:      '/clients/',
+  query: {
+    prefix: /^[A-Za-z0-9@/:._-]+$/,
+  },
   name:       'listClients',
   input:      undefined,
   output:     'list-clients-response.json#',
   stability:  'stable',
   title:      "List Clients",
   description: [
-    "Get a list of all clients."
+    "Get a list of all clients.  With `prefix`, only clients for which",
+    "it is a prefix of the clientId are returned.",
   ].join('\n')
 }, async function(req, res) {
+  let prefix = req.query.prefix;
 
   // Load all clients
+  // TODO: as we acquire more clients, perform the prefix filtering in Azure
   let clients = [];
   await this.Client.scan({}, {
-    handler: client => clients.push(client.json())
+    handler: client => {
+      if (!prefix || client.clientId.startsWith(prefix)) {
+        clients.push(client.json());
+      }
+    }
   });
 
   res.reply(clients);

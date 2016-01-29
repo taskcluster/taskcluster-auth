@@ -77,6 +77,38 @@ suite('api (client)', function() {
     assume(client2.expandedScopes).contains('assume:client-id:' + CLIENT_ID);
 
     await helper.events.waitFor('e1');
+    await helper.auth.deleteClient(CLIENT_ID);
+  });
+
+  test("auth.listClients", async() => {
+    let suffixes = ['/aa', '/bb', '/bb/1', '/bb/2'];
+    await Promise.all(suffixes.map(suffix => 
+      helper.auth.createClient(CLIENT_ID + suffix, {
+        expires: taskcluster.fromNow('1 hour'),
+        description: 'test client',
+      })
+    ));
+
+    let gotSuffixes = (result) =>
+      _.map(_.filter(result,
+                     c => c.clientId.startsWith(CLIENT_ID)),
+            c => c.clientId.substr(CLIENT_ID.length)).sort();
+
+    // get all clients
+    assume(gotSuffixes(await helper.auth.listClients())).to.deeply.equal(suffixes);
+
+    // prefix filtering
+    assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb'})))
+    .to.deeply.equal(['/bb', '/bb/1', '/bb/2']);
+    assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb/'})))
+    .to.deeply.equal(['/bb/1', '/bb/2']);
+    assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/c'})))
+    .to.deeply.equal([]);
+
+    // clean up
+    await Promise.all(suffixes.map(suffix =>
+      helper.auth.deleteClient(CLIENT_ID + suffix)
+    ));
   });
 
   test("auth.createClient (with scopes)", async () => {
