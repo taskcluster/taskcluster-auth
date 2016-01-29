@@ -706,6 +706,24 @@ api.declare({
   return res.reply({scopes: this.resolver.resolve(input.scopes)});
 });
 
+/** Get the request scopes */
+api.declare({
+  method:     'get',
+  route:      '/scopes/current',
+  name:       'currentScopes',
+  output:     'scopeset.json#',
+  stability:  'stable',
+  title:      "Get Current Scopes",
+  description: [
+    "Return the expanded scopes available in the request, taking into account all sources",
+    "of scopes and scope restrictions (temporary credentials, assumeScopes, client scopes,",
+    "and roles)."
+  ].join('\n')
+}, async function(req, res) {
+  let input = req.body;
+  return res.reply({scopes: await req.scopes()})
+});
+
 // Load aws and azure API implementations, these loads API and declares methods
 // on the API object exported from this file
 require('./aws');

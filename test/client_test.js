@@ -337,4 +337,54 @@ suite('api (client)', function() {
     await helper.auth.deleteRole('myrole:a');
     await helper.auth.deleteRole('myrole:b');
   });
+
+  test("auth.currentScopes with root credentials", async () => {
+    assumeScopesetsEqual(await helper.auth.currentScopes(), {scopes: ['*']});
+  });
+
+  test("auth.currentScopes with root credentials and authorizedScopes", async () => {
+    let auth = new helper.Auth({
+      baseUrl:          helper.baseUrl,
+      credentials: {
+        clientId:       'root',
+        accessToken:    helper.cfg.app.rootAccessToken,
+      },
+      authorizedScopes: ['myapi:a', 'myapi:b'],
+    });
+    assumeScopesetsEqual(await auth.currentScopes(),
+      {scopes: ['myapi:a', 'myapi:b']});
+  });
+
+  test("auth.currentScopes with temp credentials", async () => {
+    let auth = new helper.Auth({
+      baseUrl:          helper.baseUrl,
+      credentials: taskcluster.createTemporaryCredentials({
+        expiry:       taskcluster.fromNow('10 min'),
+        scopes:       ['myapi:x', 'myapi:y'],
+        credentials:  {
+          clientId:       'root',
+          accessToken:    helper.cfg.app.rootAccessToken,
+        },
+      }),
+    });
+    assumeScopesetsEqual(await auth.currentScopes(),
+      {scopes: ['myapi:x', 'myapi:y']});
+  });
+
+  test("auth.currentScopes with temp credentials and authorizedScopes", async () => {
+    let auth = new helper.Auth({
+      baseUrl:          helper.baseUrl,
+      credentials: taskcluster.createTemporaryCredentials({
+        expiry:       taskcluster.fromNow('10 min'),
+        scopes:       ['myapi:x', 'myapi:y'],
+        credentials:  {
+          clientId:       'root',
+          accessToken:    helper.cfg.app.rootAccessToken,
+        },
+      }),
+      authorizedScopes: ['myapi:x'],
+    });
+    assumeScopesetsEqual(await auth.currentScopes(),
+      {scopes: ['myapi:x']});
+  });
 });
