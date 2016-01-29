@@ -688,6 +688,23 @@ api.declare({
   return res.reply();
 });
 
+/** Expand a scopeset */
+api.declare({
+  method:     'get',
+  route:      '/scopes/expand',
+  name:       'expandScopes',
+  input:      'scopeset.json#',
+  output:     'scopeset.json#',
+  stability:  'stable',
+  title:      "Expand Scopes",
+  description: [
+    "Return an expanded copy of the given scopeset, with scopes implied by any",
+    "roles included."
+  ].join('\n')
+}, async function(req, res) {
+  let input = req.body;
+  return res.reply({scopes: this.resolver.resolve(input.scopes)});
+});
 
 // Load aws and azure API implementations, these loads API and declares methods
 // on the API object exported from this file

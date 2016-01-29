@@ -283,4 +283,58 @@ suite('api (client)', function() {
     });
   });
 
+  let assumeScopesetsEqual = (ss1, ss2) => {
+    ss1.scopes.sort();
+    ss2.scopes.sort();
+    assume(ss1).deeply.equal(ss2);
+  }
+
+  test("auth.expandScopes with empty scopeset", async () => {
+    assumeScopesetsEqual(await helper.auth.expandScopes({scopes: []}), {scopes: []});
+  });
+
+  test("auth.expandScopes with non-expanding scopes", async () => {
+    let scopes = ['myapi:a', 'myapi:b'];
+    assume(await helper.auth.expandScopes({scopes: scopes}))
+    .to.deeply.equal({scopes: scopes});
+    assumeScopesetsEqual(await helper.auth.expandScopes({scopes}), {scopes})
+  });
+
+  test("auth.expandScopes with expanding scopes", async () => {
+    await helper.auth.deleteRole('myrole:a');
+    await helper.auth.deleteRole('myrole:b');
+
+    await helper.events.listenFor('role-a', helper.authEvents.roleCreated({
+      roleId:  'myrole:a'
+    }));
+    await helper.events.listenFor('role-b', helper.authEvents.roleCreated({
+      roleId:  'myrole:b'
+    }));
+
+    await helper.auth.createRole('myrole:a', {
+      description: 'test role',
+      scopes: ['myapi:a:a', 'myapi:a:b']
+    });
+    await helper.auth.createRole('myrole:b', {
+      description: 'test role',
+      scopes: ['assume:myrole:a', 'myapi:b:a']
+    });
+    await helper.events.waitFor('role-a');
+    await helper.events.waitFor('role-b');
+
+    assumeScopesetsEqual(await helper.auth.expandScopes({scopes: [
+      'assume:myrole:b',
+      'myapi:c',
+    ]}), {scopes: [
+      'assume:myrole:a',
+      'assume:myrole:b',
+      'myapi:a:a',
+      'myapi:a:b',
+      'myapi:b:a',
+      'myapi:c'
+    ]});
+
+    await helper.auth.deleteRole('myrole:a');
+    await helper.auth.deleteRole('myrole:b');
+  });
 });
