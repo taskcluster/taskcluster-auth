@@ -799,9 +799,12 @@ api.declare({
     if (!req.satisfies([req.body.requiredScopes])) {
       return;
     }
-    req.scopes()
-       .then(scopes => res.reply({scopes}))
-       .catch(err => res.reportInternalError(err));
+    Promise.all([
+      req.clientId(),
+      req.scopes(),
+    ]).then([clientId, scopes] => res.reply({clientId, scopes})).catch(err => {
+      return res.reportInternalError(err);
+    });
   });
 });
 
