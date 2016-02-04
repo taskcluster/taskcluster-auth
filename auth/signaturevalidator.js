@@ -26,8 +26,6 @@ var limitClientWithExt = function(client, ext, expandScopes) {
     ext = JSON.parse(new Buffer(ext, 'base64').toString('utf-8'));
   }
   catch(err) {
-    debug("Failed to parse ext, leave error for signature validation!",
-          err, err.stack);
     throw new Error("Failed to parse ext");
   }
 
@@ -45,7 +43,7 @@ var limitClientWithExt = function(client, ext, expandScopes) {
       throw new Error('ext.certificate.seed must be a string');
     }
     if (cert.seed.length !== 44) {
-      throw new Error('ext.certificate.seed is too small');
+      throw new Error('ext.certificate.seed must be 44 characters');
     }
     if (typeof(cert.start) !== 'number') {
       throw new Error('ext.certificate.start must be a number');
@@ -53,7 +51,7 @@ var limitClientWithExt = function(client, ext, expandScopes) {
     if (typeof(cert.expiry) !== 'number') {
       throw new Error('ext.certificate.expiry must be a number');
     }
-    if (!cert.scopes instanceof Array) {
+    if (!(cert.scopes instanceof Array)) {
       throw new Error("ext.certificate.scopes must be an array");
     }
     if (!cert.scopes.every(utils.validScope)) {
@@ -117,7 +115,7 @@ var limitClientWithExt = function(client, ext, expandScopes) {
   // Handle scope restriction with authorizedScopes
   if (ext.authorizedScopes) {
     // Validate input format
-    if (!ext.authorizedScopes instanceof Array) {
+    if (!(ext.authorizedScopes instanceof Array)) {
       throw new Error("ext.authorizedScopes must be an array");
     }
     if (!ext.authorizedScopes.every(utils.validScope)) {
@@ -159,7 +157,7 @@ var limitClientWithExt = function(client, ext, expandScopes) {
  *     {status: 'auth-success', scheme, scopes}, or,
  *     {status: 'auth-success', scheme, scopes, hash}
  *
- * The `expandScopes` applies and rules that expands scopes, such as roles.
+ * The `expandScopes` applies any rules that expands scopes, such as roles.
  * It is assumed that clients from `clientLoader` are returned with scopes
  * fully expanded.
  *
