@@ -4,6 +4,7 @@ var base        = require('taskcluster-base');
 var slugid      = require('slugid');
 var Promise     = require('promise');
 var _           = require('lodash');
+var createSignatureValidator = require('./signaturevalidator');
 
 /** API end-point for version v1/ */
 var api = new base.API({
@@ -761,6 +762,48 @@ api.declare({
   return this.signatureValidator(req.body).then(result => res.reply(result));
 });
 
+
+api.declare({
+  method:     'post',
+  route:      '/test-authenticate',
+  name:       'testAuthenticate',
+  input:      'test-authenticate-request.json#',
+  output:     'test-authenticate-response.json#',
+  stability:  'experimental',
+  title:      "Test Authentication",
+  deferAuth:  true,
+  description: [
+    "Utility method to test your implementation of the authentication scheme.",
+    "The request payload carries a set of scopes that the client has",
+    "and a set of scopes that the request is required to have.",
+    "",
+    "You can authenticate against this end-point with any `clientId` as",
+    "long as the `accessToken` is `secret-for-<clientId>`.",
+    "",
+    "This end-point is strictly aimed at testing client library",
+    "implementations, so that implementors don't have to write mock servers.",
+  ]
+}, async function(req, res) {
+  // TODO: Export remoteAuthentication from base.API
+  base.API.remoteAuthentication({
+    signatureValidator: createSignatureValidator({
+      clientLoader: async (clientId) => {
+        return {
+          clientId,
+          accessToken: 'secret-for-' + clientId,
+          scopes: req.body.clientScopes
+        };
+      }
+    }),
+  })(req, res, () => {
+    if (!req.satisfies([req.body.requiredScopes])) {
+      return;
+    }
+    req.scopes()
+       .then(scopes => res.reply({scopes}))
+       .catch(err => res.reportInternalError(err));
+  });
+});
 
 /** Check that the server is a alive */
 api.declare({
