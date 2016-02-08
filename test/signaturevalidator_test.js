@@ -103,6 +103,21 @@ suite("signature validation", function() {
   };
 
   var testWithTemp = function(name, options, inputFn, expected) {
+    /**
+     * Options is on the form
+     * {
+     *   clientId: clientId to return
+     *   accessToken: accessToken for clientId or (if given in ext) issuer
+     *   start, expiry: Date objects included in cert
+     *   scopes: scopes for cert
+     *   name: name to include in cert/sig
+     *   issuer: issuer to include in cert/sig
+     *   omitNameFromCert: if true, omit the `name` property of the cert
+     *   omitNameFromSig: if true, omit the `name` line from the signature
+     *   omitIssuerFromCert: if true, omit the `issuer` property of the cert
+     *   omitIssuerFromSig: if true, omit the `issuer` line from the signature
+     * }
+     */
     let makeInput = () => {
       let clientId = options.clientId;
 
@@ -128,25 +143,34 @@ suite("signature validation", function() {
         seed:       slugid.v4() + slugid.v4(),
         signature:  null  // generated later
       };
+      if (options.name && !options.omitNameFromCert) {
+        cert.name = options.name;
+      }
+
+      if (options.issuer && !options.omitIssuerFromCert) {
+        cert.issuer = options.issuer;
+      }
 
       // Construct signature
-      cert.signature = crypto
-        .createHmac('sha256', options.accessToken)
-        .update(
-          [
-            'version:'  + cert.version,
-            'seed:'     + cert.seed,
-            'start:'    + cert.start,
-            'expiry:'   + cert.expiry,
-            'scopes:'
-          ].concat(cert.scopes).join('\n')
-        )
-        .digest('base64');
-
       if (options.signature) {
         cert.signature = crypto
           .createHmac('sha256', options.signature)
           .digest('base64');
+      } else {
+        let sig = crypto.createHmac('sha256', options.accessToken);
+        sig.update('version:'  + cert.version + '\n');
+        if (options.name && !options.omitNameFromSig) {
+          sig.update('name:'  + options.name + '\n');
+        }
+        if (options.issuer && !options.omitIssuerFromSig) {
+          sig.update('issuer:'  + options.issuer + '\n');
+        }
+        sig.update('seed:'     + cert.seed + '\n');
+        sig.update('start:'    + cert.start + '\n');
+        sig.update('expiry:'   + cert.expiry + '\n');
+        sig.update('scopes:\n');
+        sig.update(cert.scopes.join('\n'));
+        cert.signature = sig.digest('base64');
       }
 
       // Construct temporary key
@@ -167,8 +191,13 @@ suite("signature validation", function() {
   };
 
   // shorthands
-  let success = function(scopes) {
-    return {status: 'auth-success', scheme: 'hawk', scopes};
+  let success = function(scopes, clientId) {
+    return {
+      clientId: clientId || 'root',
+      status: 'auth-success',
+      scheme: 'hawk',
+      scopes,
+    };
   };
 
   let failed = function(message) {
@@ -505,6 +534,158 @@ suite("signature validation", function() {
     }
   }), failed("ext.certificate issuer `unpriv` doesn't have sufficient scopes"));
 
+  testWithTemp("named temporary credentials", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), success(['tmpscope'], 'my-temp-cred'));
+
+  testWithTemp("named temporary credentials with authorizedScopes", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['scopes:*'],
+    name: 'my-temp-cred',
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+        authorizedScopes: ['scopes:1', 'scopes:2'],
+      },
+    }
+  }), success(['scopes:1', 'scopes:2'], 'my-temp-cred'));
+
+  testWithTemp("invalid: named temporary credentials with no issuer", {
+    clientId: 'root',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.name must only be used with ext.certificate.issuer'));
+
+  testWithTemp("invalid: named temporary credentials with no issuer, invalid clientId", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('no such clientId'));
+
+  testWithTemp("invalid: named temporary credentials with issuer == name", {
+    clientId: 'root',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'root',
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.issuer must differ from the supplied clientId'));
+
+  testWithTemp("invalid: named temporary credentials clientId != name", {
+    clientId: 'some-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.name must match the supplied clientId'));
+
+  testWithTemp("invalid: named temporary credentials with issuer but no name in cert", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+    issuer: 'root',
+    omitNameFromCert: true
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.name must be set when ext.certificate.issuer is given'));
+
+  testWithTemp("invalid: named temporary credentials with issuer but no name in signature", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 'my-temp-cred',
+    issuer: 'root',
+    omitNameFromSig: true
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.signature is not valid'));
+
+  testWithTemp("invalid: named temporary credentials with name that is not a string", {
+    clientId: 'my-temp-cred',
+    accessToken: 'root-secret',
+    scopes: ['tmpscope'],
+    name: 5432,
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed('ext.certificate.name must be a string'));
+
+  testWithTemp("invalid: named temporary credentials with name that issuer cannot create", {
+    clientId: 'cant-create-this',
+    accessToken: 'unpriv-secret',
+    scopes: [],
+    name: 'cant-create-this',
+    issuer: 'unpriv',
+  }, (id, key, certificate) => ({
+    authorization: {
+      credentials: {id, key},
+      ext: {
+        certificate,
+      },
+    }
+  }), failed("ext.certificate issuer `unpriv` doesn't have " +
+             "`auth:create-client:cant-create-this` for supplied clientId."));
+
   test("simple bewit", {
     bewit: {
       id: 'root',
@@ -543,14 +724,14 @@ suite("signature validation", function() {
     }
   }, failed('no such clientId'));
 
-  testWithTemp("bewit based on temporary scopes", {
+  testWithTemp("bewit based on temporary creds", {
     clientId: 'root',
     scopes: ['scope3'],
   }, (id, key, certificate) => ({
     bewit: {id, key, ext: {certificate}}
   }), success(['scope3']));
 
-  testWithTemp("bewit based on temporary scopes and authorizedScopes", {
+  testWithTemp("bewit based on temporary creds and authorizedScopes", {
     clientId: 'root',
     scopes: ['scope*'],
   }, (id, key, certificate) => ({
@@ -563,4 +744,21 @@ suite("signature validation", function() {
       }
     }
   }), success(['scope3']));
+
+  testWithTemp("bewit based on named temporary creds and authorizedScopes", {
+    clientId: 'root/temp-url',
+    accessToken: 'root-secret',
+    scopes: ['scope*'],
+    name: 'root/temp-url',
+    issuer: 'root',
+  }, (id, key, certificate) => ({
+    bewit: {
+      id,
+      key,
+      ext: {
+        authorizedScopes: ['scope3'],
+        certificate,
+      }
+    }
+  }), success(['scope3'], 'root/temp-url'));
 });
