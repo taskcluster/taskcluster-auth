@@ -87,14 +87,14 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
 
     // Check clientId validity
     if (issuingClientId !== credentialName) {
-      if (!cert.name) {
-        throw new Error('ext.certificate.name must be set when ext.certificate.issuer is given');
+      if (!cert.clientId) {
+        throw new Error('ext.certificate.clientId must be set when ext.certificate.issuer is given');
       }
-      if (typeof(cert.name) !== 'string') {
-        throw new Error('ext.certificate.name must be a string');
+      if (typeof(cert.clientId) !== 'string') {
+        throw new Error('ext.certificate.clientId must be a string');
       }
-      if (cert.name !== credentialName) {
-        throw new Error('ext.certificate.name must match the supplied clientId');
+      if (cert.clientId !== credentialName) {
+        throw new Error('ext.certificate.clientId must match the supplied clientId');
       }
       let createScope = 'auth:create-client:' + credentialName;
       if (!utils.scopeMatch(issuingScopes, [[createScope]])) {
@@ -102,8 +102,8 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
                         "` doesn't have `" + createScope + "` for supplied clientId.");
       }
     } else {
-      if (cert.hasOwnProperty('name')) {
-        throw new Error('ext.certificate.name must only be used with ext.certificate.issuer');
+      if (cert.hasOwnProperty('clientId')) {
+        throw new Error('ext.certificate.clientId must only be used with ext.certificate.issuer');
       }
     }
 
@@ -115,14 +115,14 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
 
     // Generate certificate signature
     var sigContent = []
-    sigContent.push('version:'  + '1');
-    if (cert.name && cert.issuer) {
-      sigContent.push('name:'   + cert.name);
-      sigContent.push('issuer:' + cert.issuer);
+    sigContent.push('version:'    + '1');
+    if (cert.clientId && cert.issuer) {
+      sigContent.push('clientId:' + cert.clientId);
+      sigContent.push('issuer:'   + cert.issuer);
     }
-    sigContent.push('seed:'     + cert.seed);
-    sigContent.push('start:'    + cert.start);
-    sigContent.push('expiry:'   + cert.expiry);
+    sigContent.push('seed:'       + cert.seed);
+    sigContent.push('start:'      + cert.start);
+    sigContent.push('expiry:'     + cert.expiry);
     sigContent.push('scopes:');
     sigContent = sigContent.concat(cert.scopes);
     var signature = crypto.createHmac('sha256', accessToken)
