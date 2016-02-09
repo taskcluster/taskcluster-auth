@@ -184,8 +184,10 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
  * The function returned takes an object:
  *     {method, resource, host, port, authorization}
  * And returns promise for an object on one of the forms:
- *     {status: 'auth-failed', message}, or
- *     {status: 'auth-success', clientId, scheme, scopes}
+ *     {status: 'auth-failed', message},
+ *     {status: 'auth-success', clientId, scheme, scopes}, or
+ *     {status: 'auth-success', clientId, scheme, scopes, hash}
+ * where `hash` is the payload hash.
  *
  * The `expandScopes` applies any rules that expands scopes, such as roles.
  * It is assumed that clients from `clientLoader` are returned with scopes
