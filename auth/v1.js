@@ -776,8 +776,8 @@ api.declare({
     "The request payload carries a set of scopes that the client has",
     "and a set of scopes that the request is required to have.",
     "",
-    "You can authenticate against this end-point with any `clientId` as",
-    "long as the `accessToken` is `secret-for-<clientId>`.",
+    "You can authenticate against this end-point with `tester` as `clientId`",
+    "and `no-secret` as `accessToken`.",
     "",
     "This end-point is strictly aimed at testing client library",
     "implementations, so that implementors don't have to write mock servers.",
@@ -786,10 +786,13 @@ api.declare({
   base.API.remoteAuthentication({
     signatureValidator: signaturevalidator.createSignatureValidator({
       clientLoader: async (clientId) => {
+        if (clientId !== 'tester') {
+          throw new Error("Client with clientId '" + clientId + "' not found");
+        }
         return {
-          clientId,
-          accessToken: 'secret-for-' + clientId,
-          scopes: req.body.clientScopes
+          clientId: 'tester',
+          accessToken: 'no-secret',
+          scopes: req.body.clientScopes,
         };
       }
     }),
