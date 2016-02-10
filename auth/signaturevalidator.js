@@ -87,15 +87,6 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
 
     // Check clientId validity
     if (issuingClientId !== credentialName) {
-      if (!cert.clientId) {
-        throw new Error('ext.certificate.clientId must be set when ext.certificate.issuer is given');
-      }
-      if (typeof(cert.clientId) !== 'string') {
-        throw new Error('ext.certificate.clientId must be a string');
-      }
-      if (cert.clientId !== credentialName) {
-        throw new Error('ext.certificate.clientId must match the supplied clientId');
-      }
       let createScope = 'auth:create-client:' + credentialName;
       if (!utils.scopeMatch(issuingScopes, [[createScope]])) {
         throw new Error("ext.certificate issuer `" + issuingClientId +
@@ -116,8 +107,8 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
     // Generate certificate signature
     var sigContent = []
     sigContent.push('version:'    + '1');
-    if (cert.clientId && cert.issuer) {
-      sigContent.push('clientId:' + cert.clientId);
+    if (cert.issuer) {
+      sigContent.push('clientId:' + credentialName);
       sigContent.push('issuer:'   + cert.issuer);
     }
     sigContent.push('seed:'       + cert.seed);
@@ -132,7 +123,11 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
     // Validate signature
     if (typeof(cert.signature) !== 'string' ||
         !cryptiles.fixedTimeComparison(cert.signature, signature)) {
-      throw new Error("ext.certificate.signature is not valid");
+      if (cert.issuer) {
+        throw new Error("ext.certificate.signature is not valid, or wrong clientId provided");
+      } else {
+        throw new Error("ext.certificate.signature is not valid");
+      }
     }
 
     // Regenerate temporary key

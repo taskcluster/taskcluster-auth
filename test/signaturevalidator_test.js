@@ -110,9 +110,8 @@ suite("signature validation", function() {
      *   accessToken: accessToken for clientId or (if given in ext) issuer
      *   start, expiry: Date objects included in cert
      *   scopes: scopes for cert
-     *   clientId: clientId to include in cert/sig
+     *   credentialName: credentialName to include in sig
      *   issuer: issuer to include in cert/sig
-     *   omitClientIdFromCert: if true, omit the `clientId` property of the cert
      *   omitClientIdFromSig: if true, omit the `clientId` line from the signature
      *   omitIssuerFromCert: if true, omit the `issuer` property of the cert
      *   omitIssuerFromSig: if true, omit the `issuer` line from the signature
@@ -143,9 +142,6 @@ suite("signature validation", function() {
         seed:       slugid.v4() + slugid.v4(),
         signature:  null  // generated later
       };
-      if (options.clientId && !options.omitClientIdFromCert) {
-        cert.clientId = options.clientId;
-      }
 
       if (options.issuer && !options.omitIssuerFromCert) {
         cert.issuer = options.issuer;
@@ -159,8 +155,8 @@ suite("signature validation", function() {
       } else {
         let sig = crypto.createHmac('sha256', options.accessToken);
         sig.update('version:'    + cert.version + '\n');
-        if (options.clientId && !options.omitClientIdFromSig) {
-          sig.update('clientId:' + options.clientId + '\n');
+        if (options.credentialName && !options.omitClientIdFromSig) {
+          sig.update('clientId:' + options.credentialName + '\n');
         }
         if (options.issuer && !options.omitIssuerFromSig) {
           sig.update('issuer:'   + options.issuer + '\n');
@@ -538,7 +534,7 @@ suite("signature validation", function() {
     id: 'my-temp-cred',
     accessToken: 'root-secret',
     scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
+    credentialName: 'my-temp-cred',
     issuer: 'root',
   }, (id, key, certificate) => ({
     authorization: {
@@ -553,7 +549,7 @@ suite("signature validation", function() {
     id: 'my-temp-cred',
     accessToken: 'root-secret',
     scopes: ['scopes:*'],
-    clientId: 'my-temp-cred',
+    credentialName: 'my-temp-cred',
     issuer: 'root',
   }, (id, key, certificate) => ({
     authorization: {
@@ -565,39 +561,11 @@ suite("signature validation", function() {
     }
   }), success(['scopes:1', 'scopes:2'], 'my-temp-cred'));
 
-  testWithTemp("invalid: named temporary credentials with no issuer", {
-    id: 'root',
-    accessToken: 'root-secret',
-    scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
-  }, (id, key, certificate) => ({
-    authorization: {
-      credentials: {id, key},
-      ext: {
-        certificate,
-      },
-    }
-  }), failed('ext.certificate.clientId must only be used with ext.certificate.issuer'));
-
-  testWithTemp("invalid: named temporary credentials with no issuer, invalid clientId", {
-    id: 'my-temp-cred',
-    accessToken: 'root-secret',
-    scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
-  }, (id, key, certificate) => ({
-    authorization: {
-      credentials: {id, key},
-      ext: {
-        certificate,
-      },
-    }
-  }), failed('no such clientId'));
-
   testWithTemp("invalid: named temporary credentials with issuer == clientId", {
     id: 'root',
     accessToken: 'root-secret',
     scopes: ['tmpscope'],
-    clientId: 'root',
+    credentialName: 'root',
     issuer: 'root',
   }, (id, key, certificate) => ({
     authorization: {
@@ -612,7 +580,7 @@ suite("signature validation", function() {
     id: 'some-temp-cred',
     accessToken: 'root-secret',
     scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
+    credentialName: 'my-temp-cred',
     issuer: 'root',
   }, (id, key, certificate) => ({
     authorization: {
@@ -621,29 +589,13 @@ suite("signature validation", function() {
         certificate,
       },
     }
-  }), failed('ext.certificate.clientId must match the supplied clientId'));
-
-  testWithTemp("invalid: named temporary credentials with issuer but no name in cert", {
-    id: 'my-temp-cred',
-    accessToken: 'root-secret',
-    scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
-    issuer: 'root',
-    omitClientIdFromCert: true
-  }, (id, key, certificate) => ({
-    authorization: {
-      credentials: {id, key},
-      ext: {
-        certificate,
-      },
-    }
-  }), failed('ext.certificate.clientId must be set when ext.certificate.issuer is given'));
+  }), failed('ext.certificate.signature is not valid, or wrong clientId provided'));
 
   testWithTemp("invalid: named temporary credentials with issuer but no name in signature", {
     id: 'my-temp-cred',
     accessToken: 'root-secret',
     scopes: ['tmpscope'],
-    clientId: 'my-temp-cred',
+    credentialName: 'my-temp-cred',
     issuer: 'root',
     omitClientIdFromSig: true
   }, (id, key, certificate) => ({
@@ -653,28 +605,13 @@ suite("signature validation", function() {
         certificate,
       },
     }
-  }), failed('ext.certificate.signature is not valid'));
-
-  testWithTemp("invalid: named temporary credentials with name that is not a string", {
-    id: 'my-temp-cred',
-    accessToken: 'root-secret',
-    scopes: ['tmpscope'],
-    clientId: 5432,
-    issuer: 'root',
-  }, (id, key, certificate) => ({
-    authorization: {
-      credentials: {id, key},
-      ext: {
-        certificate,
-      },
-    }
-  }), failed('ext.certificate.clientId must be a string'));
+  }), failed('ext.certificate.signature is not valid, or wrong clientId provided'));
 
   testWithTemp("invalid: named temporary credentials with name that issuer cannot create", {
     id: 'cant-create-this',
     accessToken: 'unpriv-secret',
     scopes: [],
-    clientId: 'cant-create-this',
+    credentialName: 'cant-create-this',
     issuer: 'unpriv',
   }, (id, key, certificate) => ({
     authorization: {
@@ -749,7 +686,7 @@ suite("signature validation", function() {
     id: 'root/temp-url',
     accessToken: 'root-secret',
     scopes: ['scope*'],
-    clientId: 'root/temp-url',
+    credentialName: 'root/temp-url',
     issuer: 'root',
   }, (id, key, certificate) => ({
     bewit: {
