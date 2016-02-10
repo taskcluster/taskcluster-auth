@@ -66,4 +66,29 @@ suite('taskcluster-auth-staging check', function() {
     let res = await auth.authenticateHawk(data);
     assume(res.status).to.equal('auth-success');
   });
+
+  test("can answer authenticateHawk requests with a hash", async function() {
+    // just use a very basic request
+    var credentials = helper.cfg.checkStaging.credentials;
+    var data = {
+      method: 'get',
+      resource: '/',
+      host: 'test.taskcluster.net',
+      port: 443,
+    };
+    data.authorization = hawk.client.header(
+        'https://' + data.host + data.resource, data.method, {
+          credentials: {
+            id: credentials.clientId,
+            key: credentials.accessToken,
+            algorithm: 'sha256',
+          },
+          payload: '{}',
+        }).field;
+    console.log(data.authorization);
+
+    let res = await auth.authenticateHawk(data);
+    assume(res.status).to.equal('auth-success');
+    assume(res.hash).to.equal('XtNvx1FqrUYVOLlne3l2WzcyRfj9QeC6YtmhMKKFMGY='); // hash of '{}'
+  });
 });
