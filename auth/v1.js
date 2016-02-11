@@ -772,15 +772,17 @@ api.declare({
   stability:  'experimental',
   title:      "Test Authentication",
   description: [
-    "Utility method to test your implementation of the authentication scheme.",
-    "The request payload carries a set of scopes that the client has",
-    "and a set of scopes that the request is required to have.",
+    "Utility method to test client implementations of TaskCluster",
+    "authentication.",
     "",
-    "You can authenticate against this end-point with `tester` as `clientId`",
-    "and `no-secret` as `accessToken`.",
+    "Rather than using real credentials, this endpoint accepts requests with",
+    "clientId `tester` and accessToken `no-secret`. That client's scopes are",
+    "based on `clientScopes` in the request body.",
     "",
-    "This end-point is strictly aimed at testing client library",
-    "implementations, so that implementors don't have to write mock servers.",
+    "The request is validated, with any certificate, authorizedScopes, etc.",
+    "applied, and the resulting scopes are checked against `requiredScopes`",
+    "from the request body. On success, the response contains the clientId",
+    "and scopes as seen by the API method.",
   ].join('\n')
 }, async function(req, res) {
   base.API.remoteAuthentication({
