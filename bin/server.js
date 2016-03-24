@@ -12,7 +12,7 @@ var ScopeResolver      = require('../auth/scoperesolver');
 var signaturevalidator = require('../auth/signaturevalidator');
 var taskcluster        = require('taskcluster-client');
 var url                = require('url');
-var validator_         = require('taskcluster-lib-validate');
+var validate           = require('taskcluster-lib-validate');
 var loader             = require('taskcluster-lib-loader');
 var app                = require('taskcluster-lib-app');
 
@@ -90,7 +90,7 @@ let load = loader({
 
   validator: {
     requires: ['cfg'],
-    setup: ({cfg}) => validator_({
+    setup: ({cfg}) => validate({
       prefix:  'auth/v1/',
       aws:      cfg.aws
     })
