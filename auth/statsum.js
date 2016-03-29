@@ -1,5 +1,6 @@
 let api = require('./v1');
 let Statsum = require('statsum');
+let taskcluster = require('taskcluster-client');
 
 api.declare({
   method:     'get',
@@ -14,8 +15,7 @@ api.declare({
   description: [
     "Get temporary `token` and `baseUrl` for sending metrics to statsum.",
     "",
-    "The token is valid for 25 hours, clients should refresh it within",
-    "24 hours.",
+    "The token is valid for 24 hours, clients should refresh after expiration.",
   ].join('\n')
 }, async function(req, res) {
   let project = req.params.project;
@@ -29,5 +29,6 @@ api.declare({
     project,
     token:    Statsum.createToken(project, this.statsum.secret, '25h'),
     baseUrl:  this.statsum.baseUrl,
+    expires:  taskcluster.fromNowJSON('24 hours'),
   });
 });

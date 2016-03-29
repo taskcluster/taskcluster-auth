@@ -8,5 +8,6 @@ suite('statsum', () => {
     assert(result.project === 'test');
     assert(result.token);
     assert(result.baseUrl);
+    assert(result.expires);
   });
 });
