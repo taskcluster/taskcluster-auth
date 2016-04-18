@@ -36,7 +36,7 @@
     "promise": "^7.0.4",
     "pulse-publisher": "^0.9.1",
     "raven": "^0.10.0",
-    "sentry-api": "jonasfj/node-sentry-api#create-project",
+    "sentry-api": "^0.1.0",
     "slugid": "^1.1.0",
     "statsum": "^0.3.0",
     "superagent": "^1.1.0",
