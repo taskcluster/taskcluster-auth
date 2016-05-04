@@ -63,7 +63,8 @@ suite('aws S3 (STS)', () => {
     await s3.putObject({
       Bucket:   bucket,
       Key:      id,
-      Body:     text
+      Body:     text,
+      ACL:      'public-read'
     }).promise();
 
     debug("### s3.getObject");

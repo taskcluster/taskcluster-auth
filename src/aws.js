@@ -18,6 +18,11 @@ api.declare({
     "parameter is required in the scope guarding access.  The bucket name must",
     "not contain `.`, as recommended by Amazon.",
     "",
+    "Read-only access allows GetObject and ListBucket, limited by the prefix,",
+    "and GetBucketLocation on the bucket.  Read-write access adds PutObject",
+    "and DeleteObject, as well as PutObjectAcl with X-AMZ-ACL set to either",
+    "`public-read` or `private`.",
+    "",
     "The credentials are set to expire after an hour, but this behavior is",
     "subject to change. Hence, you should always read the `expires` property",
     "from the response, if you intend to maintain active credentials in your",
@@ -71,9 +76,94 @@ api.declare({
   ];
   if (level === 'read-write') {
     objectActions.push(
-      's3:PutObject',
-      's3:DeleteObject'
     );
+  }
+
+  var statements = [];
+
+  statements.push({
+    Sid:            'ReadObjectsUnderPrefix',
+    Effect:         'Allow',
+    Action: [
+      's3:GetObject'
+    ],
+    Resource: [
+      'arn:aws:s3:::{{bucket}}/{{prefix}}*'
+        .replace('{{bucket}}', bucket)
+        .replace('{{prefix}}', prefix)
+    ]
+  });
+  statements.push({
+    Sid:            'ListObjectsUnderPrefix',
+    Effect:         'Allow',
+    Action: [
+      's3:ListBucket'
+    ],
+    Resource: [
+      'arn:aws:s3:::{{bucket}}'
+        .replace('{{bucket}}', bucket)
+    ],
+    Condition: {
+      StringLike: {
+        's3:prefix': [
+          '{{prefix}}*'.replace('{{prefix}}', prefix)
+        ]
+      }
+    }
+  });
+  statements.push({
+    Sid:            'GetBucketLocation',
+    Effect:         'Allow',
+    Action: [
+      's3:GetBucketLocation'
+    ],
+    Resource: [
+      'arn:aws:s3:::{{bucket}}'
+        .replace('{{bucket}}', bucket)
+    ]
+  });
+
+  if (level === 'read-write') {
+    statements.push({
+      Sid:            'WriteObjectsUnderPrefix',
+      Effect:         'Allow',
+      Action: [
+        's3:PutObject',
+        's3:DeleteObject'
+      ],
+      Resource: [
+        'arn:aws:s3:::{{bucket}}/{{prefix}}*'
+          .replace('{{bucket}}', bucket)
+          .replace('{{prefix}}', prefix)
+      ]
+    });
+    statements.push({
+      Sid:            'SetAclsForObjectsUnderPrefix',
+      Effect:         'Allow',
+      Action: [
+        's3:PutObjectAcl',
+      ],
+      Resource: [
+        'arn:aws:s3:::{{bucket}}/{{prefix}}*'
+          .replace('{{bucket}}', bucket)
+          .replace('{{prefix}}', prefix)
+      ],
+      Condition: {
+        // one of the canned ACLs is set
+        StringEqualsIfExists: {
+          's3:x-amz-acl': ['private', 'public-read']
+        },
+        // and none of the explicit grants are set
+        Null: {
+          's3:x-amz-grant-read': true,
+          's3:x-amz-grant-write': true,
+          's3:x-amz-grant-read-acp': true,
+          's3:x-amz-grant-write-acp': true,
+          's3:x-amz-grant-full-control': true,
+          's3:x-amz-grant-grant-full-control': true, // typo in docs??
+        }
+      }
+    });
   }
 
   // For details on the policy see: http://amzn.to/1ETStaL
@@ -81,45 +171,7 @@ api.declare({
     Name:               'TemporaryS3ReadWriteCredentials',
     Policy:             JSON.stringify({
       Version:          '2012-10-17',
-      Statement:[
-        {
-          Sid:            'ReadWriteObjectsUnderPrefix',
-          Effect:         'Allow',
-          Action:         objectActions,
-          Resource: [
-            'arn:aws:s3:::{{bucket}}/{{prefix}}*'
-              .replace('{{bucket}}', bucket)
-              .replace('{{prefix}}', prefix)
-          ]
-        }, {
-          Sid:            'ListObjectsUnderPrefix',
-          Effect:         'Allow',
-          Action: [
-            's3:ListBucket'
-          ],
-          Resource: [
-            'arn:aws:s3:::{{bucket}}'
-              .replace('{{bucket}}', bucket)
-          ],
-          Condition: {
-            StringLike: {
-              's3:prefix': [
-                '{{prefix}}*'.replace('{{prefix}}', prefix)
-              ]
-            }
-          }
-        }, {
-          Sid:            'GetBucketLocation',
-          Effect:         'Allow',
-          Action: [
-            's3:GetBucketLocation'
-          ],
-          Resource: [
-            'arn:aws:s3:::{{bucket}}'
-              .replace('{{bucket}}', bucket)
-          ]
-        }
-      ]
+      Statement:        statements
     }),
     DurationSeconds:    60 * 60   // Expire credentials in an hour
   }).promise();
