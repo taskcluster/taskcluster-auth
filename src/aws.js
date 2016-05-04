@@ -149,8 +149,18 @@ api.declare({
           .replace('{{prefix}}', prefix)
       ],
       Condition: {
-        StringEquals: {
+        // one of the canned ACLs is set
+        StringEqualsIfExists: {
           's3:x-amz-acl': ['private', 'public-read']
+        },
+        // and none of the explicit grants are set
+        Null: {
+          's3:x-amz-grant-read': true,
+          's3:x-amz-grant-write': true,
+          's3:x-amz-grant-read-acp': true,
+          's3:x-amz-grant-write-acp': true,
+          's3:x-amz-grant-full-control': true,
+          's3:x-amz-grant-grant-full-control': true, // typo in docs??
         }
       }
     });
