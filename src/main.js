@@ -5,7 +5,6 @@ let path               = require('path');
 let debug              = require('debug')('server');
 let Promise            = require('promise');
 let AWS                = require('aws-sdk-promise');
-let raven              = require('raven');
 let exchanges          = require('./exchanges');
 let ScopeResolver      = require('./scoperesolver');
 let signaturevalidator = require('./signaturevalidator');
@@ -35,21 +34,13 @@ let load = loader({
 
   monitor: {
     requires: ['cfg', 'drain'],
-    setup: ({cfg, drain}) => base.stats.startProcessUsageReporting({
-      drain:      drain,
-      component:  cfg.app.statsComponent,
-      process:    'server'
+    setup: ({cfg, drain}) => base.monitor({
+      project:      'taskcluster-auth',
+      drain:        drain,
+      credentials:  cfg.taskcluster.credentials,
+      process:      'server',
+      mock:         profile === 'test',
     })
-  },
-
-  raven: {
-    requires: ['cfg'],
-    setup: ({cfg}) => {
-      if (cfg.raven.sentryDSN) {
-        return new raven.Client(cfg.raven.sentryDSN);
-      }
-      return null;
-    }
   },
 
   sentryManager: {
