@@ -11,7 +11,7 @@ let signaturevalidator = require('./signaturevalidator');
 let taskcluster        = require('taskcluster-client');
 let url                = require('url');
 let validate           = require('taskcluster-lib-validate');
-let loader             = require('taskcluster-lib-loader');
+let loader             = require('taskcluster-lib-loader')('process');
 let app                = require('taskcluster-lib-app');
 let SentryManager      = require('./sentrymanager');
 
@@ -33,13 +33,12 @@ let load = loader({
   },
 
   monitor: {
-    requires: ['cfg', 'drain'],
-    setup: ({cfg, drain}) => base.monitor({
+    requires: ['cfg', 'drain', 'process'],
+    setup: ({cfg, process}) => base.monitor({
       project:      'taskcluster-auth',
-      drain:        drain,
       credentials:  cfg.taskcluster.credentials,
-      process:      'server',
       mock:         profile === 'test',
+      process,
     })
   },
 
@@ -111,10 +110,10 @@ let load = loader({
   api: {
     requires: [
       'cfg', 'Client', 'Role', 'validator', 'publisher', 'resolver',
-      'drain', 'raven', 'sentryManager'
+      'monitor', 'sentryManager'
     ],
     setup: async ({
-      cfg, Client, Role, validator, publisher, resolver, drain, raven,
+      cfg, Client, Role, validator, publisher, resolver, monitor,
       sentryManager
     }) => {
       // Set up the Azure tables
@@ -151,6 +150,7 @@ let load = loader({
           signatureValidator,
           sentryManager,
           statsum:            cfg.app.statsum,
+          monitor:            monitor.prefix('api-context'),
         },
         validator,
         signatureValidator,
@@ -159,8 +159,7 @@ let load = loader({
         referencePrefix:    'auth/v1/api.json',
         aws:                cfg.aws,
         component:          cfg.app.statsComponent,
-        drain:              drain,
-        raven:              raven
+        monitor:            monitor.prefix('api'),
       })
     }
   },
