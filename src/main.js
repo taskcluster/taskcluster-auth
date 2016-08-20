@@ -5,51 +5,18 @@ let path               = require('path');
 let debug              = require('debug')('server');
 let Promise            = require('promise');
 let AWS                = require('aws-sdk-promise');
-let raven              = require('raven');
 let exchanges          = require('./exchanges');
 let ScopeResolver      = require('./scoperesolver');
 let signaturevalidator = require('./signaturevalidator');
 let taskcluster        = require('taskcluster-client');
 let url                = require('url');
-let validate           = require('taskcluster-lib-validate');
-let loader             = require('taskcluster-lib-loader');
-let app                = require('taskcluster-lib-app');
 let SentryManager      = require('./sentrymanager');
 
 // Create component loader
-let load = loader({
+let load = base.loader({
   cfg: {
     requires: ['profile'],
     setup: ({profile}) => base.config({profile}),
-  },
-
-  drain: {
-    requires: ['cfg'],
-    setup: ({cfg}) => {
-      if (cfg.influx && cfg.influx.connectionString) {
-        return new base.stats.Influx(cfg.influx);
-      }
-      return new base.stats.NullDrain();
-    }
-  },
-
-  monitor: {
-    requires: ['cfg', 'drain'],
-    setup: ({cfg, drain}) => base.stats.startProcessUsageReporting({
-      drain:      drain,
-      component:  cfg.app.statsComponent,
-      process:    'server'
-    })
-  },
-
-  raven: {
-    requires: ['cfg'],
-    setup: ({cfg}) => {
-      if (cfg.raven.sentryDSN) {
-        return new raven.Client(cfg.raven.sentryDSN);
-      }
-      return null;
-    }
   },
 
   sentryManager: {
@@ -65,45 +32,39 @@ let load = loader({
   },
 
   Client: {
-    requires: ['cfg', 'drain', 'resolver', 'process'],
-    setup: ({cfg, drain, resolver, process}) =>
+    requires: ['cfg', 'resolver'],
+    setup: ({cfg, resolver}) =>
       data.Client.setup({
         table:        cfg.app.clientTableName,
         credentials:  cfg.azure || {},
         signingKey:   cfg.app.tableSigningKey,
         cryptoKey:    cfg.app.tableCryptoKey,
-        drain:        drain,
-        component:    cfg.app.statsComponent,
-        process,
         context:      {resolver}
       })
   },
 
   Role: {
-    requires: ['cfg', 'drain', 'resolver', 'process'],
-    setup: ({cfg, drain, resolver, process}) =>
+    requires: ['cfg', 'resolver'],
+    setup: ({cfg, resolver}) =>
       data.Role.setup({
         table:        cfg.app.rolesTableName,
         credentials:  cfg.azure || {},
         signingKey:   cfg.app.tableSigningKey,
-        drain:        drain,
-        component:    cfg.app.statsComponent,
-        process,
         context:      {resolver}
       })
   },
 
   validator: {
     requires: ['cfg'],
-    setup: ({cfg}) => validate({
+    setup: ({cfg}) => base.validator({
       prefix:  'auth/v1/',
       aws:      cfg.aws
     })
   },
 
   publisher: {
-    requires: ['cfg', 'validator', 'drain', 'process'],
-    setup: ({cfg, validator, drain, process}) =>
+    requires: ['cfg', 'validator'],
+    setup: ({cfg, validator}) =>
       exchanges.setup({
         credentials:      cfg.pulse,
         exchangePrefix:   cfg.app.exchangePrefix,
@@ -111,20 +72,16 @@ let load = loader({
         referencePrefix:  'auth/v1/exchanges.json',
         publish:          cfg.app.publishMetaData,
         aws:              cfg.aws,
-        drain:            drain,
-        component:        cfg.app.statsComponent,
-        process,
       })
   },
 
   api: {
     requires: [
       'cfg', 'Client', 'Role', 'validator', 'publisher', 'resolver',
-      'drain', 'raven', 'sentryManager'
+      'sentryManager'
     ],
     setup: async ({
-      cfg, Client, Role, validator, publisher, resolver, drain, raven,
-      sentryManager
+      cfg, Client, Role, validator, publisher, resolver, sentryManager
     }) => {
       // Set up the Azure tables
       await Role.ensureTable();
@@ -167,10 +124,7 @@ let load = loader({
         baseUrl:            cfg.server.publicUrl + '/v1',
         referencePrefix:    'auth/v1/api.json',
         aws:                cfg.aws,
-        component:          cfg.app.statsComponent,
-        drain:              drain,
-        raven:              raven
-      })
+      });
     }
   },
 
@@ -178,7 +132,7 @@ let load = loader({
     requires: ['cfg', 'api'],
     setup: async ({cfg, api}) => {
       // Create app
-      let serverApp = app(cfg.server);
+      let serverApp = base.app(cfg.server);
 
       serverApp.use('/v1', api);
 
