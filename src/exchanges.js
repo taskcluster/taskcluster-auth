@@ -1,8 +1,8 @@
-var Exchanges = require('pulse-publisher');
+var base      = require('taskcluster-base');
 var assert    = require('assert');
 
 /** Declaration of exchanges offered by the auth */
-var exchanges = new Exchanges({
+var exchanges = new base.Exchanges({
   title:      "Auth Pulse Exchanges",
   description: [
     "The auth service, typically available at `auth.taskcluster.net`",
