@@ -1,4 +1,7 @@
-let base               = require('taskcluster-base');
+let Loader             = require('taskcluster-lib-loader');
+let Validate           = require('taskcluster-lib-validate');
+let App                = require('taskcluster-lib-app');
+let Config             = require('typed-env-config');
 let data               = require('./data');
 let v1                 = require('./v1');
 let path               = require('path');
@@ -13,10 +16,10 @@ let url                = require('url');
 let SentryManager      = require('./sentrymanager');
 
 // Create component loader
-let load = base.loader({
+let load = Loader({
   cfg: {
     requires: ['profile'],
-    setup: ({profile}) => base.config({profile}),
+    setup: ({profile}) => Config({profile}),
   },
 
   sentryManager: {
@@ -56,7 +59,7 @@ let load = base.loader({
 
   validator: {
     requires: ['cfg'],
-    setup: ({cfg}) => base.validator({
+    setup: ({cfg}) => Validate({
       prefix:  'auth/v1/',
       aws:      cfg.aws
     })
@@ -132,7 +135,7 @@ let load = base.loader({
     requires: ['cfg', 'api'],
     setup: async ({cfg, api}) => {
       // Create app
-      let serverApp = base.app(cfg.server);
+      let serverApp = App(cfg.server);
 
       serverApp.use('/v1', api);
 
