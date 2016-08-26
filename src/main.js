@@ -1,5 +1,6 @@
 let Loader             = require('taskcluster-lib-loader');
 let Validate           = require('taskcluster-lib-validate');
+let Monitor            = require('taskcluster-lib-monitor');
 let App                = require('taskcluster-lib-app');
 let Config             = require('typed-env-config');
 let data               = require('./data');
@@ -14,6 +15,8 @@ let signaturevalidator = require('./signaturevalidator');
 let taskcluster        = require('taskcluster-client');
 let url                = require('url');
 let SentryManager      = require('./sentrymanager');
+let Statsum            = require('statsum');
+let _                  = require('lodash');
 
 // Create component loader
 let load = Loader({
@@ -25,6 +28,33 @@ let load = Loader({
   sentryManager: {
     requires: ['cfg'],
     setup: ({cfg}) => new SentryManager(cfg.app.sentry),
+  },
+
+  monitor: {
+    requires: ['cfg', 'sentryManager', 'profile', 'process'],
+    setup: ({cfg, sentryManager, profile, process}) => {
+      return Monitor({
+        project: 'taskcluster-auth',
+        process,
+        mock: profile === 'test',
+        statsumToken: async (project) => {
+          let key = await this.sentryManager.projectDSN(project);
+          return {
+            project,
+            dsn: _.pick(key.dsn, ['secret', 'public']),
+            expires: key.expires.toJSON(),
+          };
+        },
+        sentryDNS: async (project) => {
+          return {
+            project,
+            token:    Statsum.createToken(project, cfg.app.statsum.secret, '25h'),
+            baseUrl:  cfg.app.statsum.baseUrl,
+            expires:  taskcluster.fromNowJSON('24 hours'),
+          };
+        },
+      });
+    },
   },
 
   resolver: {
