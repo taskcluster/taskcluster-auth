@@ -45,7 +45,7 @@ let load = Loader({
             expires: key.expires.toJSON(),
           };
         },
-        sentryDNS: async (project) => {
+        sentryDSN: async (project) => {
           return {
             project,
             token:    Statsum.createToken(project, cfg.app.statsum.secret, '25h'),
