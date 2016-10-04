@@ -410,35 +410,24 @@ let generateDFA = (roles, i, n, k, sets, implied) => {
 exports.generateDFA = generateDFA;
 
 /**
- * Builds a pair {resolver, sets} where sets is a list of lists of roles,
- * and given a scope `resolver(scope)`` returns an index from sets.
- *
- * That definition sounds slightly complicated, it's actually very simple,
- * sets is on the form:
- * ```js
- * sets = [
- *   [{role}, ...],
- *   [{role}, ...],
- *   [{role}, ...]
- * ]
- * ```
- *
- * For efficiency we allow sets[i] = [{role}, ..., j] where j < i to be
- * interpreted as sets[i].concat(sets[j]). By not duplicating we don't have to
- * resolve `sets[j]` multiple times, even though the set appears in multiple
- * other sets.
- *
- * The `resolver` function returns an index in the sets array, as this allows
- * us to later create a new sets variable where roles have been expanded to
- * the scopes they imply, and just like that we can use the `resolver` to go
- * from scope to expanded scopes.
+ * Finds the set identifier given a scope and initial state.
  */
-let buildResolver = (roles) => {
-  // Generate DFA
-  roles = sortRolesForDFAGeneration(roles);
-  let sets = [[]];
-  let dfa = generateDFA(roles, 0, roles.length, 0, sets, 0);
+let executeDFA = (state, scope, depth = 0) => {
+  let n = scope.length;
+  if (typeof(state.end) === 'number' && n == depth) {
+    return state.end;
+  }
+  let next = state[scope[depth]];
+  if (next !== undefined) {
+    return executeDFA(next, scope, depth+1);
+  }
+  return state.default || 0;
+};
 
+/**
+ * Compile DFA to a function equivalent to `executeDFA.bind(null, dfa)`.
+ */
+let compileDFA = (dfa) => {
   // Render a DFA state to code
   let renderDFA = (state, depth) => {
     var d = '';
@@ -471,10 +460,43 @@ let buildResolver = (roles) => {
   // zero, hence, depth = 0.
   let body = 'var n = scope.length;\n' + renderDFA(dfa, 0);
 
-  // Create resolver function and give it both sets and scopes as parameters
-  // then bind sets so that'll always return an entry from sets.
-  let resolver = new Function('sets', 'scope', body);
-  resolver = resolver.bind(null, sets);
+  // Create resolver function and give it scopes as parameter.
+  return new Function('scope', body);
+};
+
+/**
+ * Builds a pair {resolver, sets} where sets is a list of lists of roles,
+ * and given a scope `resolver(scope)`` returns an index from sets.
+ *
+ * That definition sounds slightly complicated, it's actually very simple,
+ * sets is on the form:
+ * ```js
+ * sets = [
+ *   [{role}, ...],
+ *   [{role}, ...],
+ *   [{role}, ...]
+ * ]
+ * ```
+ *
+ * For efficiency we allow sets[i] = [{role}, ..., j] where j < i to be
+ * interpreted as sets[i].concat(sets[j]). By not duplicating we don't have to
+ * resolve `sets[j]` multiple times, even though the set appears in multiple
+ * other sets.
+ *
+ * The `resolver` function returns an index in the sets array, as this allows
+ * us to later create a new sets variable where roles have been expanded to
+ * the scopes they imply, and just like that we can use the `resolver` to go
+ * from scope to expanded scopes.
+ */
+let buildResolver = (roles) => {
+  // Generate DFA
+  roles = sortRolesForDFAGeneration(roles);
+  let sets = [[]];
+  let dfa = generateDFA(roles, 0, roles.length, 0, sets, 0);
+
+  //let resolver = compileDFA(dfa); // This is actually slower, too bad...
+  let resolver = (scope) => executeDFA(dfa, scope);
+
   return {sets, resolver: (scope) => {
       // Optimization so our DFA only has to operate on roleId
       if (scope.startsWith('assume:')) {
