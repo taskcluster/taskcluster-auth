@@ -413,14 +413,16 @@ exports.generateDFA = generateDFA;
  * Finds the set identifier given a scope and initial state.
  */
 let executeDFA = (state, scope, depth = 0) => {
-  let n = scope.length;
-  if (typeof(state.end) === 'number' && n == depth) {
+  // If scope ends here and this is a terminal state, return the terminal
+  if (state.end !== undefined && scope.length === depth) {
     return state.end;
   }
+  // Find next state given current character, and traverse next state
   let next = state[scope[depth]];
   if (next !== undefined) {
     return executeDFA(next, scope, depth+1);
   }
+  // If no next state, return the default result or zero if no-default result.
   return state.default || 0;
 };
 
