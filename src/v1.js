@@ -880,9 +880,8 @@ api.declare({
   stability:  'experimental',
   title:    "Ping Server",
   description: [
-    "Documented later...",
-    "",
-    "**Warning** this api end-point is **not stable**."
+    "Respond without doing anything.",
+    "This endpoint is used to check that the service is up."
   ].join('\n')
 }, function(req, res) {
   res.status(200).json({
