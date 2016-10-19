@@ -16,7 +16,6 @@ var Client = Entity.configure({
     expires:        Entity.types.Date,
     details:        Entity.types.JSON
   },
-  context:          ['resolver']
 }).configure({
   version:          2,
   signEntities:     true,
@@ -37,7 +36,6 @@ var Client = Entity.configure({
     scopes:         Entity.types.JSON,  // new in v2
     disabled:       Entity.types.Number // new in v2
   },
-  context:          ['resolver'],
   migrate(item) {
     item.scopes = [];
     item.disabled = 0;
@@ -45,13 +43,8 @@ var Client = Entity.configure({
   }
 });
 
-/** Get scopes granted to this client */
-Client.prototype.expandedScopes = function() {
-  return this.resolver.resolve(this.scopes);
-};
-
 /** Get JSON representation of client */
-Client.prototype.json = function() {
+Client.prototype.json = function(resolver) {
   return {
     clientId:       this.clientId,
     description:    this.description,
@@ -61,7 +54,7 @@ Client.prototype.json = function() {
     lastDateUsed:   this.details.lastDateUsed,
     lastRotated:    this.details.lastRotated,
     scopes:         this.scopes,
-    expandedScopes: this.expandedScopes(),
+    expandedScopes: resolver.resolve(scopes),
     disabled:       !!this.disabled
   };
 };
@@ -115,11 +108,10 @@ var Role = Entity.configure({
      */
     details:        Entity.types.JSON,
   },
-  context:          ['resolver']
 });
 
 /** Get JSON representation of a role */
-Role.prototype.json = function() {
+Role.prototype.json = function(resolver) {
   let scopes = ['assume:' + this.roleId];
   if (this.roleId.endsWith('*')) {
     scopes = this.scopes;
@@ -130,7 +122,7 @@ Role.prototype.json = function() {
     created:        this.details.created,
     lastModified:   this.details.lastModified,
     scopes:         this.scopes,
-    expandedScopes: this.resolver.resolve(scopes),
+    expandedScopes: resolver.resolve(scopes),
   };
 };
 
