@@ -127,7 +127,7 @@ Role.prototype.json = function(resolver) {
     created:        this.details.created,
     lastModified:   this.details.lastModified,
     scopes:         this.scopes,
-    expandedScopes: resolver.resolve(scopes),
+    expandedScopes: resolver.resolve(this.scopes),
   };
 };
 
