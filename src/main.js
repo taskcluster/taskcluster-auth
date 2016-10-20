@@ -66,7 +66,7 @@ let load = Loader({
   },
 
   Client: {
-    requires: ['cfg', 'resolver', 'monitor'],
+    requires: ['cfg', 'monitor'],
     setup: ({cfg, monitor}) =>
       data.Client.setup({
         table:        cfg.app.clientTableName,
@@ -78,7 +78,7 @@ let load = Loader({
   },
 
   Role: {
-    requires: ['cfg', 'resolver', 'monitor'],
+    requires: ['cfg', 'monitor'],
     setup: ({cfg, monitor}) =>
       data.Role.setup({
         table:        cfg.app.rolesTableName,
