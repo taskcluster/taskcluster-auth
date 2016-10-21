@@ -68,7 +68,6 @@ mocha.before(async () => {
   // Create client for working with API
   helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
   var reference = v1.reference({baseUrl: helper.baseUrl});
-  assert(reference.entries, "No entries??");
   helper.Auth = taskcluster.createClient(reference);
   helper.auth = new helper.Auth({
     baseUrl:          helper.baseUrl,
