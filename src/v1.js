@@ -294,7 +294,7 @@ api.declare({
   ]);
 
   // Create result with access token
-  let result = client.json(this.resovler);
+  let result = client.json(this.resolver);
   result.accessToken = client.accessToken;
   return res.reply(result);
 });
