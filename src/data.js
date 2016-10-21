@@ -15,7 +15,7 @@ var Client = Entity.configure({
     accessToken:    Entity.types.EncryptedText,
     expires:        Entity.types.Date,
     details:        Entity.types.JSON
-  },
+  }
 }).configure({
   version:          2,
   signEntities:     true,
@@ -112,7 +112,7 @@ var Role = Entity.configure({
      * (more properties may be added in the future)
      */
     details:        Entity.types.JSON,
-  },
+  }
 });
 
 /** Get JSON representation of a role */
@@ -127,10 +127,9 @@ Role.prototype.json = function(resolver) {
     created:        this.details.created,
     lastModified:   this.details.lastModified,
     scopes:         this.scopes,
-    expandedScopes: resolver.resolve(scopes),
+    expandedScopes: resolver.resolve(scopes)
   };
 };
 
 // Export Role
 exports.Role = Role;
-
