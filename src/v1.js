@@ -541,7 +541,7 @@ api.declare({
   name:       'createRole',
   input:      'create-role-request.json#',
   output:     'get-role-response.json#',
-  scopes:     [['auth:create-role:<roleId>']],
+  scopes:     [['auth:create-role:<roleId>'], ['auth:manage-role:<roleId>']],
   deferAuth:  true,
   stability:  'stable',
   title:      "Create Role",
@@ -618,7 +618,7 @@ api.declare({
   name:       'updateRole',
   input:      'create-role-request.json#',
   output:     'get-role-response.json#',
-  scopes:     [['auth:update-role:<roleId>']],
+  scopes:     [['auth:update-role:<roleId>'], ['auth:manage-role:<roleId>']],
   deferAuth:  true,
   stability:  'stable',
   title:      "Update Role",
@@ -627,15 +627,20 @@ api.declare({
     "",
     "The caller's scopes must satisfy all of the new scopes being added, but",
     "need not satisfy all of the client's existing scopes.",
+    "",
+    "As a special case an priviledged caller with the scope:",
+    "`auth:manage-scope:<scope>` may, add or remove `<scope>` from any role.",
+    "Notice, that `auth:manage-scope:<scope>` doesn't allow for modifications",
+    "of the description or other scopes even if the caller has such scopes.",
+    "",
+    "The `auth:manage-scope:<scope>` is given to someone who is trusted to",
+    "manage `<scope>`, thus, has the authority to grant the scope to anyone.",
+    "Naturally, this authority comes with the responsibility of having to",
+    "remove the scope from roles that don't need it.",
   ].join('\n')
 }, async function(req, res) {
   let roleId    = req.params.roleId;
   let input     = req.body;
-
-  // Check scopes
-  if (!req.satisfies({roleId})) {
-    return;
-  }
 
   // Load role
   let role = await this.Role.load({roleId}, true);
@@ -643,10 +648,28 @@ api.declare({
     return res.status(404).json({message: "role not found!"});
   }
 
-  // Check that requester has all the scopes added
-  let added = _.without.apply(_, [input.scopes].concat(role.scopes));
-  if (!req.satisfies([added])) {
-    return;
+  // Find scopes added and removed
+  let changed = _.xor(role.scopes, input.scopes);
+
+  // If caller has auth:manage-scope:<scope> for all changed scopes and the
+  // description wasn't modifed, then we don't require request has the scopes
+  // to modify the role...
+  if (!req.satisfies(changed.map(s => 'auth:manage-scope:' + s), true) ||
+      input.description !== role.description) {
+    // If requester doesn't have 'auth:manage-scope:<scope>' for all scopes
+    // modified, or description was modified, then caller must have a role
+    // specific scope granting update/manage for the given role.
+
+    // Check that requester has authority to manage this role
+    if (!req.satisfies({roleId})) {
+      return;
+    }
+
+    // Check that requester has all the scopes added
+    let added = _.without.apply(_, [input.scopes].concat(role.scopes));
+    if (!req.satisfies([added])) {
+      return;
+    }
   }
 
   // Update role
@@ -671,7 +694,7 @@ api.declare({
   method:     'delete',
   route:      '/roles/:roleId',
   name:       'deleteRole',
-  scopes:     [['auth:delete-role:<roleId>']],
+  scopes:     [['auth:delete-role:<roleId>'], ['auth:manage-role:<roleId>']],
   deferAuth:  true,
   stability:  'stable',
   title:      "Delete Role",
