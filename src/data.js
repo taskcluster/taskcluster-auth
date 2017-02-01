@@ -59,7 +59,20 @@ var Client = Entity.configure({
      *                      // (new in v3)
      * (more properties may be added in the future)
      */
-    details:        Entity.types.JSON,
+    details:        Entity.types.Schema({
+      type: 'object',
+      properties: {
+        created:            {type: 'string', format: 'date-time'},
+        lastModified:       {type: 'string', format: 'date-time'},
+        lastDataUsed:       {type: 'string', format: 'date-time'},
+        lastRotated:        {type: 'string', format: 'date-time'},
+        deleteOnExpiration: {type: 'boolean'},
+      },
+      required: [
+        'created', 'lastModified', 'lastDataUsed', 'lastRotated',
+        'deleteOnExpiration',
+      ],
+    }),
     scopes:         Entity.types.JSON,
     disabled:       Entity.types.Number
   },
