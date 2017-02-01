@@ -64,12 +64,12 @@ var Client = Entity.configure({
       properties: {
         created:            {type: 'string', format: 'date-time'},
         lastModified:       {type: 'string', format: 'date-time'},
-        lastDataUsed:       {type: 'string', format: 'date-time'},
+        lastDateUsed:       {type: 'string', format: 'date-time'},
         lastRotated:        {type: 'string', format: 'date-time'},
         deleteOnExpiration: {type: 'boolean'},
       },
       required: [
-        'created', 'lastModified', 'lastDataUsed', 'lastRotated',
+        'created', 'lastModified', 'lastDateUsed', 'lastRotated',
         'deleteOnExpiration',
       ],
     }),
