@@ -131,3 +131,76 @@ api.declare({
     expiry:   expiry.toJSON()
   });
 });
+
+api.declare({
+  method:     'get',
+  route:      '/azure/:account/blob/:container/read-write',
+  name:       'azureBlobSAS',
+  input:      undefined,
+  output:     'azure-blob-access-response.json#',
+  deferAuth:  true,
+  stability:  'stable',
+  scopes:     [['auth:azure-blob-access:<account>/<container>']],
+  title:      "Get Shared-Access-Signature for Azure Blob",
+  description: [
+    "Get a shared access signature (SAS) string for use with a specific Azure",
+    "Blob Storage container. Note, this will create the container, if it doesn't",
+    "already exist."
+  ].join('\n')
+}, async function(req, res){
+  // Get parameters
+  var account = req.params.account;
+  var containerName = req.params.container;
+
+  // Check that the client is authorized to access given account and table
+  if (!req.satisfies({
+      account:      account,
+      container:    containerName
+    })) {
+    return;
+  }
+
+  // Check that the account exists
+  if (!this.azureAccounts[account]) {
+    return res.status(404).json({
+      message:    "Account '" + account + "' not found, can't delegate access"
+    });
+  }
+
+  // Construct client
+  var blob = new azure.Blob({
+    accountId:  account,
+    accessKey:  this.azureAccounts[account]
+  });
+
+  // Create container ignore error, if it already exists
+  try {
+    await blob.createContainer(containerName);
+  } catch (err) {
+    if (err.code !== 'ContainerAlreadyExists') {
+      throw err;
+    }
+  }
+
+  // Construct SAS
+  var expiry = new Date(Date.now() + 25 * 60 * 1000);
+  var sas = blob.sas(containerName, null, {
+    start:         new Date(Date.now() - 15 * 60 * 1000),
+    expiry:        expiry,
+    resourceType: 'container',
+    permissions: {
+      read:       true,
+      add:        true,
+      create:     true,
+      write:      true,
+      delete:     true,
+      list:       true
+    }
+  });
+
+  // Return the generated SAS
+  return res.reply({
+    sas:      sas,
+    expiry:   expiry.toJSON()
+  });
+});
