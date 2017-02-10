@@ -1,4 +1,4 @@
-suite.only('azure table (sas)', function() {
+suite('azure table (sas)', function() {
   var Promise     = require('promise');
   var assert      = require('assert');
   var debug       = require('debug')('auth:test:azure');
