@@ -1,4 +1,4 @@
-suite('azure table (sas)', function() {
+suite.only('azure table (sas)', function() {
   var Promise     = require('promise');
   var assert      = require('assert');
   var debug       = require('debug')('auth:test:azure');
@@ -101,8 +101,7 @@ suite('azure table (sas)', function() {
     accessToken: helper.rootAccessToken
   };
 
-
-  test('azureTableSAS (allowed table)', function() {
+  test('azureTableSAS (allowed table)', () => {
     // Restrict access a bit
     var auth = new helper.Auth({
       baseUrl:          helper.baseUrl,
@@ -182,52 +181,113 @@ suite('azure table (sas)', function() {
     });
   });
 
-  test('azureBlobSAS', function() {
-    return helper.auth.azureBlobSAS(
+  test('azureBlobSAS', async () => {
+    let result = await helper.auth.azureBlobSAS(
       helper.testaccount,
-      'container-test'
-    ).then(function(result) {
-      assert(typeof(result.sas) === 'string', "Expected some form of string");
-      assert(new Date(result.expiry).getTime() > new Date().getTime(),
-        "Expected expiry to be in the future");
-    });
+      'container-test',
+      'read-write'
+    );
+
+    assert(typeof(result.sas) === 'string', "Expected some form of string");
+    assert(new Date(result.expiry).getTime() > new Date().getTime(),
+      "Expected expiry to be in the future");
   });
 
-  test('azureBlobSAS (allowed container)', function() {
-    // Restrict access a bit
-    var auth = new helper.Auth({
+  test('azureBlobSAS (read-write)', async () => {
+    let result = await helper.auth.azureBlobSAS(
+      helper.testaccount,
+      'container-test',
+      'read-write',
+    );
+    assert(typeof(result.sas) === 'string', "Expected some form of string");
+    assert(new Date(result.expiry).getTime() > new Date().getTime(),
+      "Expected expiry to be in the future");
+
+    let blob = new azure.Blob({
+      accountId: helper.testaccount,
+      sas: result.sas
+    });
+
+    result = await blob.putBlob('container-test', 'blobTest', {type: 'BlockBlob'});
+    assert(result);
+  });
+
+  test('azureBlobSAS (read-only)', async () => {
+    let result = await helper.auth.azureBlobSAS(
+      helper.testaccount,
+      'container-test',
+      'read-only',
+    );
+    assert(typeof(result.sas) === 'string', "Expected some form of string");
+    assert(new Date(result.expiry).getTime() > new Date().getTime(),
+      "Expected expiry to be in the future");
+
+    let blob = new azure.Blob({
+      accountId: helper.testaccount,
+      sas: result.sas
+    });
+
+    try {
+      await blob.putBlob('container-test', 'blobTest', {type: 'BlockBlob'});
+    } catch (error) {
+      assert.equal(error.code, 'AuthorizationPermissionMismatch');
+      return;
+    }
+    assert(false, 'This should have thrown an error because the write is not allowed.');
+  });
+
+  test('azureBlobSAS (invalid level)', async () => {
+    try {
+      await helper.auth.azureBlobSAS(
+        helper.testaccount,
+        'container-test',
+        'foo-bar-baz',
+      );
+    } catch (error) {
+      assert.equal(error.message, "Level 'foo-bar-baz' is not valid. Must be one of ['read-write', 'read-only'].");
+      return;
+    }
+    assert(false, "This should have thrown an error");
+  });
+
+  test('azureBlobSAS (allowed container)', async () => {
+    let auth = new helper.Auth({
       baseUrl:          helper.baseUrl,
       credentials:      rootCredentials,
       authorizedScopes: [
-        'auth:azure-blob-access:' + helper.testaccount + '/allowed-container'
+        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
       ]
     });
-    return auth.azureBlobSAS(
+
+    let result = await auth.azureBlobSAS(
       helper.testaccount,
-      'allowed-container'
-    ).then(function(result) {
-      assert(typeof(result.sas) === 'string', "Expected some form of string");
-      assert(new Date(result.expiry).getTime() > new Date().getTime(),
-        "Expected expiry to be in the future");
-    });
+      'allowed-container',
+      'read-write'
+    );
+
+    assert(typeof(result.sas) === 'string', "Expected some form of string");
+    assert(new Date(result.expiry).getTime() > new Date().getTime(),
+      "Expected expiry to be in the future");
   });
 
-  test('azureBlobSAS (unauthorized container)', function() {
-    // Restrict access a bit
-    var auth = new helper.Auth({
+  test('azureBlobSAS (unauthorized container)', async () => {
+    let auth = new helper.Auth({
       baseUrl:          helper.baseUrl,
       credentials:      rootCredentials,
       authorizedScopes: [
-        'auth:azure-blob-access:' + helper.testaccount + '/allowed-container'
+        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
       ]
     });
-    return auth.azureBlobSAS(
-      helper.testaccount,
-      'unauthorized-container'
-    ).then(function(result) {
-      assert(false, "Expected an authentication error!");
-    }, function(err) {
-      assert(err.statusCode == 403, "Expected authorization error!");
-    });
+    try {
+     await auth.azureBlobSAS(
+       helper.testaccount,
+       'unauthorized-container',
+       'read-write'
+     );
+    } catch (error) {
+      assert(error.statusCode == 403, "Expected authorization error!");
+      return;
+    }
+    assert(false, "Expected an authentication error!");
   });
 });

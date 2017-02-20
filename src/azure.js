@@ -134,28 +134,36 @@ api.declare({
 
 api.declare({
   method:     'get',
-  route:      '/azure/:account/blob/:container/read-write',
+  route:      '/azure/:account/blob/:container/:level',
   name:       'azureBlobSAS',
   input:      undefined,
-  output:     'azure-blob-access-response.json#',
+  output:     'azure-blob-response.json#',
   deferAuth:  true,
   stability:  'stable',
-  scopes:     [['auth:azure-blob-access:<account>/<container>']],
+  scopes:     [['auth:azure-blob:<level>:<account>/<container>']],
   title:      "Get Shared-Access-Signature for Azure Blob",
   description: [
     "Get a shared access signature (SAS) string for use with a specific Azure",
-    "Blob Storage container. Note, this will create the container, if it doesn't",
-    "already exist."
+    "Blob Storage container. If the level is read-write, the container will be created, " +
+    "if it doesn't already exists."
   ].join('\n')
 }, async function(req, res){
   // Get parameters
-  var account = req.params.account;
-  var containerName = req.params.container;
+  let account = req.params.account;
+  let containerName = req.params.container;
+  let level = req.params.level;
 
-  // Check that the client is authorized to access given account and table
+  if (['read-write', 'read-only'].indexOf(level) < 0) {
+    return res.status(404).json({
+      message:    "Level '" + level + "' is not valid. Must be one of ['read-write', 'read-only']."
+    });
+  }
+
+  // Check that the client is authorized to access given account and container
   if (!req.satisfies({
       account:      account,
-      container:    containerName
+      container:    containerName,
+      level:        level,
     })) {
     return;
   }
@@ -168,33 +176,37 @@ api.declare({
   }
 
   // Construct client
-  var blob = new azure.Blob({
+  let blob = new azure.Blob({
     accountId:  account,
     accessKey:  this.azureAccounts[account]
   });
 
   // Create container ignore error, if it already exists
-  try {
-    await blob.createContainer(containerName);
-  } catch (err) {
-    if (err.code !== 'ContainerAlreadyExists') {
-      throw err;
+  if (level === 'read-write') {
+    try {
+      await blob.createContainer(containerName);
+    } catch (err) {
+      if (err.code !== 'ContainerAlreadyExists') {
+        throw err;
+      }
     }
   }
 
+  let perm = level === 'read-write';
+
   // Construct SAS
-  var expiry = new Date(Date.now() + 25 * 60 * 1000);
-  var sas = blob.sas(containerName, null, {
+  let expiry = new Date(Date.now() + 25 * 60 * 1000);
+  let sas = blob.sas(containerName, null, {
     start:         new Date(Date.now() - 15 * 60 * 1000),
     expiry:        expiry,
     resourceType: 'container',
     permissions: {
       read:       true,
-      add:        true,
-      create:     true,
-      write:      true,
-      delete:     true,
-      list:       true
+      add:        perm,
+      create:     perm,
+      write:      perm,
+      delete:     perm,
+      list:       perm
     }
   });
 
