@@ -244,7 +244,7 @@ suite.only('azure table (sas)', function() {
         'foo-bar-baz',
       );
     } catch (error) {
-      assert.equal(error.message, "Level 'foo-bar-baz' is not valid. Must be one of ['read-write', 'read-only'].");
+      assert.equal(error.code, 'InvalidRequestArguments');
       return;
     }
     assert(false, "This should have thrown an error");

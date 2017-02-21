@@ -88,9 +88,8 @@ api.declare({
 
   // Check that the account exists
   if (!this.azureAccounts[account]) {
-    return res.status(404).json({
-      message:    "Account '" + account + "' not found, can't delegate access"
-    });
+    return res.reportError('InvalidRequestArguments',
+      `Account '${account}' not found, can't delegate access`);
   }
 
   // Construct client
@@ -154,9 +153,8 @@ api.declare({
   let level = req.params.level;
 
   if (['read-write', 'read-only'].indexOf(level) < 0) {
-    return res.status(404).json({
-      message:    "Level '" + level + "' is not valid. Must be one of ['read-write', 'read-only']."
-    });
+    return res.reportError('InvalidRequestArguments',
+      `Level '${level}' is not valid. Must be one of ['read-write', 'read-only'].`);
   }
 
   // Check that the client is authorized to access given account and container
@@ -206,7 +204,7 @@ api.declare({
       create:     perm,
       write:      perm,
       delete:     perm,
-      list:       perm
+      list:       true,
     }
   });
 
