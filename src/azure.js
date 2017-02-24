@@ -166,9 +166,8 @@ api.declare({
 
   // Check that the account exists
   if (!this.azureAccounts[account]) {
-    return res.status(404).json({
-      message:    "Account '" + account + "' not found, can't delegate access"
-    });
+    return res.reportError('InvalidRequestArguments',
+      `Account '${level}' not found, can't delegate access.`);
   }
 
   // Construct client
