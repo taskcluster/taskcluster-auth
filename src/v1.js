@@ -55,7 +55,7 @@ var api = new API({
     // Patterns for Azure
     account:    /^[a-z0-9]{3,24}$/,
     table:      /^[A-Za-z][A-Za-z0-9]{2,62}$/,
-    container:  /^[a-z0-9](?!.*([-])\1)[a-z0-9-]{2,62}$/,
+    container:  /^(?!.*[-]{2})[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/,
     level:      /^(read-write|read-only)$/,
 
     // Patterns for AWS
