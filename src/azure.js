@@ -133,7 +133,7 @@ api.declare({
 
 api.declare({
   method:     'get',
-  route:      '/azure/:account/blob/:container/:level',
+  route:      '/azure/:account/containers/:container/:level',
   name:       'azureBlobSAS',
   input:      undefined,
   output:     'azure-blob-response.json#',
@@ -149,7 +149,7 @@ api.declare({
 }, async function(req, res){
   // Get parameters
   let account = req.params.account;
-  let containerName = req.params.container;
+  let container = req.params.container;
   let level = req.params.level;
 
   if (['read-write', 'read-only'].indexOf(level) < 0) {
@@ -158,11 +158,9 @@ api.declare({
   }
 
   // Check that the client is authorized to access given account and container
-  if (!req.satisfies({
-      account:      account,
-      container:    containerName,
-      level:        level,
-    })) {
+  if (!(level === 'read-only' &&
+    req.satisfies({account, container, level: 'read-write'}, true)) &&
+    !req.satisfies({account, container, level})) {
     return;
   }
 
@@ -182,7 +180,7 @@ api.declare({
   // Create container ignore error, if it already exists
   if (level === 'read-write') {
     try {
-      await blob.createContainer(containerName);
+      await blob.createContainer(container);
     } catch (err) {
       if (err.code !== 'ContainerAlreadyExists') {
         throw err;
@@ -194,7 +192,7 @@ api.declare({
 
   // Construct SAS
   let expiry = new Date(Date.now() + 25 * 60 * 1000);
-  let sas = blob.sas(containerName, null, {
+  let sas = blob.sas(container, null, {
     start:         new Date(Date.now() - 15 * 60 * 1000),
     expiry:        expiry,
     resourceType: 'container',

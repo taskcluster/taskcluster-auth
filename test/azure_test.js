@@ -1,4 +1,4 @@
-suite('azure table (sas)', function() {
+suite.only('azure table (sas)', function() {
   var Promise     = require('promise');
   var assert      = require('assert');
   var debug       = require('debug')('auth:test:azure');
@@ -265,6 +265,25 @@ suite('azure table (sas)', function() {
       'read-write'
     );
 
+    assert(typeof(result.sas) === 'string', "Expected some form of string");
+    assert(new Date(result.expiry).getTime() > new Date().getTime(),
+      "Expected expiry to be in the future");
+  });
+
+  test('azureBlobSAS (allowed read-write -> read-only)', async () => {
+    var auth = new helper.Auth({
+      baseUrl:          helper.baseUrl,
+      credentials:      rootCredentials,
+      authorizedScopes: [
+        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
+      ]
+    });
+
+    let result = await auth.azureBlobSAS(
+      helper.testaccount,
+      'allowed-container',
+      'read-only',
+    );
     assert(typeof(result.sas) === 'string', "Expected some form of string");
     assert(new Date(result.expiry).getTime() > new Date().getTime(),
       "Expected expiry to be in the future");
