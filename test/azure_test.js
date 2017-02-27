@@ -1,5 +1,4 @@
-suite.only('azure table (sas)', function() {
-  var Promise     = require('promise');
+suite('azure table and blob (sas)', function() {
   var assert      = require('assert');
   var debug       = require('debug')('auth:test:azure');
   var helper      = require('./helper');
@@ -92,7 +91,7 @@ suite.only('azure table (sas)', function() {
     ).then(function(result) {
       assert(false, "This should have thrown an error");
     }).catch(function(err) {
-      assert.equal(err.message, "Level 'foo-bar-baz' is not valid. Must be one of ['read-write', 'read-only'].");
+      assert.equal(err.code, "InvalidRequestArguments");
     });
   });
 
@@ -271,7 +270,7 @@ suite.only('azure table (sas)', function() {
   });
 
   test('azureBlobSAS (allowed read-write -> read-only)', async () => {
-    var auth = new helper.Auth({
+    let auth = new helper.Auth({
       baseUrl:          helper.baseUrl,
       credentials:      rootCredentials,
       authorizedScopes: [

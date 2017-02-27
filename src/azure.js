@@ -73,12 +73,6 @@ api.declare({
   var tableName = req.params.table;
   var level     = req.params.level;
 
-  if (!['read-write', 'read-only'].includes(level)) {
-    return res.status(404).json({
-      message:    "Level '" + level + "' is not valid. Must be one of ['read-write', 'read-only']."
-    });
-  }
-
   // We have a complicated scope situation for read-only since we want
   // read-write to grant read-only permissions as well
   if (!(level === 'read-only' && req.satisfies({account, table: tableName, level: 'read-write'}, true)) &&
@@ -88,7 +82,7 @@ api.declare({
 
   // Check that the account exists
   if (!this.azureAccounts[account]) {
-    return res.reportError('InvalidRequestArguments',
+    return res.reportError('ResourceNotFound',
       `Account '${account}' not found, can't delegate access`);
   }
 
@@ -152,11 +146,6 @@ api.declare({
   let container = req.params.container;
   let level = req.params.level;
 
-  if (['read-write', 'read-only'].indexOf(level) < 0) {
-    return res.reportError('InvalidRequestArguments',
-      `Level '${level}' is not valid. Must be one of ['read-write', 'read-only'].`);
-  }
-
   // Check that the client is authorized to access given account and container
   if (!(level === 'read-only' &&
     req.satisfies({account, container, level: 'read-write'}, true)) &&
@@ -166,7 +155,7 @@ api.declare({
 
   // Check that the account exists
   if (!this.azureAccounts[account]) {
-    return res.reportError('InvalidRequestArguments',
+    return res.reportError('ResourceNotFound',
       `Account '${level}' not found, can't delegate access.`);
   }
 
