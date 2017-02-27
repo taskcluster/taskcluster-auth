@@ -1,4 +1,4 @@
-suite('azure table and blob (sas)', function() {
+suite.only('azure table and blob (sas)', function() {
   var assert      = require('assert');
   var debug       = require('debug')('auth:test:azure');
   var helper      = require('./helper');
@@ -102,13 +102,9 @@ suite('azure table and blob (sas)', function() {
 
   test('azureTableSAS (allowed table)', () => {
     // Restrict access a bit
-    var auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
+    ]);
     return auth.azureTableSAS(
       helper.testaccount,
       'allowedTable',
@@ -122,13 +118,9 @@ suite('azure table and blob (sas)', function() {
 
   test('azureTableSAS (allowed table rw -> ro)', function() {
     // Restrict access a bit
-    var auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
+    ]);
     return auth.azureTableSAS(
       helper.testaccount,
       'allowedTable',
@@ -142,13 +134,9 @@ suite('azure table and blob (sas)', function() {
 
   test('azureTableSAS (too high permission)', function() {
     // Restrict access a bit
-    var auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-table:read-only:' + helper.testaccount + '/allowedTable'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-table:read-only:' + helper.testaccount + '/allowedTable'
+    ]);
     return auth.azureTableSAS(
       helper.testaccount,
       'allowedTable',
@@ -162,13 +150,9 @@ suite('azure table and blob (sas)', function() {
 
   test('azureTableSAS (unauthorized table)', function() {
     // Restrict access a bit
-    var auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-table:read-write:' + helper.testaccount + '/allowedTable'
+    ]);
     return auth.azureTableSAS(
       helper.testaccount,
       'unauthorizedTable',
@@ -250,13 +234,9 @@ suite('azure table and blob (sas)', function() {
   });
 
   test('azureBlobSAS (allowed container)', async () => {
-    let auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
+    ]);
 
     let result = await auth.azureBlobSAS(
       helper.testaccount,
@@ -270,13 +250,9 @@ suite('azure table and blob (sas)', function() {
   });
 
   test('azureBlobSAS (allowed read-write -> read-only)', async () => {
-    let auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
+    ]);
 
     let result = await auth.azureBlobSAS(
       helper.testaccount,
@@ -289,13 +265,9 @@ suite('azure table and blob (sas)', function() {
   });
 
   test('azureBlobSAS (unauthorized container)', async () => {
-    let auth = new helper.Auth({
-      baseUrl:          helper.baseUrl,
-      credentials:      rootCredentials,
-      authorizedScopes: [
-        'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
-      ]
-    });
+    let auth = helper.scopes([
+      'auth:azure-blob:read-write:' + helper.testaccount + '/allowed-container'
+    ]);
     try {
      await auth.azureBlobSAS(
        helper.testaccount,
