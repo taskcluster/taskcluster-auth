@@ -11,14 +11,14 @@ if (!module.parent) {
   });
 
   // invent a client name
-  var clientId = "project/taskcluster/tc-auth/staging-check/" + taskcluster.slugid()
+  var clientId = "project/taskcluster/tc-auth/sentry-staging-check/" + taskcluster.slugid()
 
   auth.createClient(clientId, {
     expires: new Date(3000, 1, 1),
-    description: "test credentials for checkStaging",
+    description: "test credentials for sentry",
     scopes: [
-      'auth:create-client:garbage/*',
-      'auth:delete-client:garbage/*',
+      'auth:sentry:playground',
+      'auth:statsum:playground',
     ],
   }).then(function(res) {
     console.log("Add the following to your user-config.yml:");
