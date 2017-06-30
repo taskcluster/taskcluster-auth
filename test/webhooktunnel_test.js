@@ -4,9 +4,11 @@ suite('webhooktunnel', () => {
   let jwt = require('jsonwebtoken');
 
   test('webhooktunnelToken', async () => {
-    let {token, id} = await helper.auth.webhooktunnelToken();
-    let decoded = jwt.decode(token);
+    let {tunnelId, token, proxyUrl} = await helper.auth.webhooktunnelToken();
+		let decoded = jwt.verify(token, 'test-secret');
+
     assert(decoded !== null);
-    assert(decoded.tid === id);
+    assert(decoded.tid === tunnelId);
+		assert(decoded.sub === 'root');
   });
 });

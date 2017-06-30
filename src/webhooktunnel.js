@@ -9,7 +9,6 @@ api.declare({
   name:       'webhooktunnelToken',
   input:      undefined,
   output:     'webhooktunnel-token-response.json#',
-  deferAuth:  true,
   stability:  'stable',
   scopes:     [['auth:webhooktunnel']],
   title:      "Get Token for Webhooktunnel Proxy",
@@ -18,29 +17,22 @@ api.declare({
     "The token is valid for 96 hours, clients should refresh after expiration.",
   ].join('\n')
 }, async function(req, res) {
-  // Check scopes
-  let scopes = [['auth:webhooktunnel']];
-
-  if (!req.satisfies(scopes)) {
-    return;
-  }
-
-  let id = slugid.nice().toLowerCase();
+  let tunnelId = (slugid.nice()+slugid.nice()).toLowerCase();
+  let secret = this.webhooktunnel.secret
+  let proxyUrl = this.webhooktunnel.proxyUrl
+  let clientId = await req.clientId();
   let now = Math.floor(Date.now()/1000);
+
   let payload = {
-    "tid": id,
-    "sub": req.params.clientId,
-    "iat": now - 900, // maybe 15 min of drift
+    "tid": tunnelId,
+    "sub": clientId,
+    "iat": now,
     "exp": now+(96*60*60),
     "nbf": now - 900, // maybe 15 min of drift
     "iss": "taskcluster-auth",
     "aud": "webhooktunnel",
   }
-  let secret = this.webhooktunnel.secret
   let token = jwt.sign(payload, secret);
 
-  return res.reply({
-    token:    token,
-    id: id,
-  });
+  return res.reply({tunnelId, token, proxyUrl});
 });

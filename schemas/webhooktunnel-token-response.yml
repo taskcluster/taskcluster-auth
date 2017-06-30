@@ -4,7 +4,7 @@ description: |
     Token for connecting a worker to webhooktunnel proxy
 type:                       object
 properties:
-  id:
+  tunnelId:
     type: string
     title: Proxy Connection ID
     description: |
@@ -13,8 +13,14 @@ properties:
     type: string
     title: Auth Token
     description: |
-      jwt token to be used as `Bearer <token>` when connecting to proxy
+      jwt token to be used as `Bearer <token>` when connecting to proxy. 
+  proxyUrl:
+    type: string
+    title: Proxy URL
+    description: |
+      websocket url at which proxy is hosted
 additionalProperties: false
 required:
   - token
-  - id
+  - tunnelId
+  - proxyUrl
