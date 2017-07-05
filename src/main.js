@@ -48,7 +48,7 @@ let load = Loader({
             expires:  taskcluster.fromNowJSON('24 hours'),
           };
 
-        },	
+        },
         sentryDSN: async (project) => {
           let key = await this.sentryManager.projectDSN(project);
           return {
