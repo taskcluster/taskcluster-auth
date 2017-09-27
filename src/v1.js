@@ -719,7 +719,7 @@ api.declare({
     this.resolver.reloadRole(roleId)
   ]);
 
-  return res.reply();
+  return res.status(200).send();
 });
 
 /** Expand a scopeset */
