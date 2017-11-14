@@ -2,15 +2,13 @@
   "name": "taskcluster-auth",
   "version": "0.1.0",
   "private": true,
-  "main": "node lib/server production",
+  "main": "node src/server production",
   "scripts": {
-    "compile": "babel-compile -p taskcluster src:lib test:.test",
-    "test": "mocha .test/*_test.js",
+    "test": "mocha test/*_test.js",
     "lint": "eslint src/*.js test/*.js",
-    "pretest": "yarn lint && yarn compile",
-    "install": "yarn compile",
+    "pretest": "yarn lint",
     "checkStagingSetup": "heroku run -a taskcluster-auth-staging node bin/make-check-client.js",
-    "checkStaging": "mocha .test/check-staging.js"
+    "checkStaging": "mocha test/check-staging.js"
   },
   "repository": {
     "type": "git",
@@ -21,9 +19,6 @@
     "aws-sdk": "^2.2.0",
     "aws-sdk-promise": "^0.0.2",
     "azure-entities": "2.0.0",
-    "babel-compile": "^2.0.0",
-    "babel-preset-taskcluster": "^3.0.0",
-    "babel-runtime": "^6.6.1",
     "cryptiles": "^2.0.4",
     "debug": "^2.2.0",
     "fast-azure-storage": "^1.0.0",

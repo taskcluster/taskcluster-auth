@@ -1,5 +1,5 @@
 suite('ScopeResolver (normalizeScopes)', () => {
-  let ScopeResolver = require('../lib/scoperesolver');
+  let ScopeResolver = require('../src/scoperesolver');
   let assert = require('assert');
   let _ = require('lodash');
 

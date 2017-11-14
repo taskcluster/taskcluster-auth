@@ -1,5 +1,5 @@
 suite('ScopeResolver (grantsRole)', () => {
-  let ScopeResolver = require('../lib/scoperesolver');
+  let ScopeResolver = require('../src/scoperesolver');
   let assert        = require('assert');
 
   // Test cases for grantsRole

@@ -1,6 +1,6 @@
 suite('DFA', () => {
-  let ScopeResolver = require('../lib/scoperesolver');
-  let dfa = require('../lib/dfa');
+  let ScopeResolver = require('../src/scoperesolver');
+  let dfa = require('../src/dfa');
   let assert = require('assert');
   let _ = require('lodash');
 
