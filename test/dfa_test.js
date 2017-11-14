@@ -51,6 +51,23 @@ suite('DFA', () => {
     });
 
     testSortRoles({
+      roleIds: [
+        'test*a',
+        'test*b',
+        'test*',
+        'test',
+        'testb',
+      ],
+      sorted: [
+        'test*',
+        'test',
+        'test*a',
+        'test*b',
+        'testb',
+      ],
+    });
+
+    testSortRoles({
       roleIds: ['(', '*', ''],
       sorted: ['*', '', '('],
     });
