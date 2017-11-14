@@ -25,8 +25,8 @@ helper.rootAccessToken = cfg.app.rootAccessToken;
 
 // Skip tests if no pulse credentials are configured
 if (!cfg.pulse.password) {
-  console.log("Skip tests for due to missing pulse credentials; " +
-              "create user-config.yml");
+  console.log('Skip tests for due to missing pulse credentials; ' +
+              'create user-config.yml');
   process.exit(1);
 }
 

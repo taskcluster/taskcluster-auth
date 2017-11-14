@@ -1,4 +1,4 @@
-suite("DFA", () => {
+suite('DFA', () => {
   let ScopeResolver = require('../lib/scoperesolver');
   let dfa = require('../lib/dfa');
   let assert = require('assert');
@@ -8,14 +8,14 @@ suite("DFA", () => {
     title = title || 'sortRolesForDFAGeneration(' + roleIds.join(',') + ')';
     test(title, () => {
       _.range(500).forEach(() => {
-        let roles = roleIds.map(i => {return {roleId: i}});
+        let roles = roleIds.map(i => {return {roleId: i};});
         roles = dfa.sortRolesForDFAGeneration(roles).map(r => r.roleId);
         if (!_.isEqual(roles, sorted)) {
-          console.log("Got: ");
+          console.log('Got: ');
           console.log(roles);
-          console.log("Expected: ");
+          console.log('Expected: ');
           console.log(sorted);
-          assert(false, "Not sorted correctly");
+          assert(false, 'Not sorted correctly');
         }
         // shuffle roleIds for next round
         roleIds = _.shuffle(roleIds);
@@ -60,17 +60,16 @@ suite("DFA", () => {
 
   const sortedRoleIds = [
     '*', 'a*', 'a', 'aa', 'aaa', 'aab', 'ab', 'abb*', 'abb', 'abbc', 'ca',
-    'caa', 'cab*', 'cab', 'cc*'
+    'caa', 'cab*', 'cab', 'cc*',
   ];
   testSortRoles({
     title:  'big list',
     roleIds:  _.shuffle(sortedRoleIds),
-    sorted: sortedRoleIds
+    sorted: sortedRoleIds,
   });
 
-
   let testMergeScopeSets = (title, {scopesA, scopesB, expected}) => {
-    test("mergeScopeSets (" + title + ")", () => {
+    test('mergeScopeSets (' + title + ')', () => {
       _.range(500).forEach(() => {
         let results = dfa.mergeScopeSets(
           dfa.sortScopesForMerge(scopesA),
@@ -81,7 +80,7 @@ suite("DFA", () => {
           console.log(expected);
           console.log('got:');
           console.log(results);
-          assert(false, "Expected different result!");
+          assert(false, 'Expected different result!');
         }
         // Shuffle for next round
         scopesA = _.shuffle(scopesA);
@@ -147,15 +146,15 @@ suite("DFA", () => {
   });
 
   testMergeScopeSets('sanity check (1)', {
-    scopesA: ['assume:tr-10','assume:tr-9','special-scope'],
+    scopesA: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
     scopesB: [],
-    expected: ['assume:tr-10','assume:tr-9','special-scope'],
+    expected: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
   });
 
   testMergeScopeSets('sanity check (2)', {
     scopesA: [],
-    scopesB: ['assume:tr-10','assume:tr-9','special-scope'],
-    expected: ['assume:tr-10','assume:tr-9','special-scope'],
+    scopesB: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
+    expected: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
   });
 
   testMergeScopeSets('can normalize two', {
@@ -164,28 +163,27 @@ suite("DFA", () => {
     expected: ['a*', 'b*', 'c', 'ca', 'da*'],
   });
 
-
   let testBuildResolver = (title, {
-    roleIds, scope, expected, skipShuffle, dump, maxSets, time
+    roleIds, scope, expected, skipShuffle, dump, maxSets, time,
   }) => {
     skipShuffle = true;
     let N = skipShuffle ? 1 : 50;
-    test("buildResolver (" + title + ")", () => {
+    test('buildResolver (' + title + ')', () => {
       for (let i = 0; i < N; i++) {
-        let roles = roleIds.map(i => {return {roleId: i}});
+        let roles = roleIds.map(i => {return {roleId: i};});
         if (time) {
-          console.time("buildResolver");
+          console.time('buildResolver');
         }
         let {resolver, sets} = dfa.buildResolver(_.shuffle(roles));
         if (time) {
-          console.timeEnd("buildResolver");
+          console.timeEnd('buildResolver');
         }
 
         let resolveSet = (i) => {
           let results = [];
           let resolve = (i) => {
             sets[i].forEach(r => {
-              if (typeof(r) === 'number') {
+              if (typeof r === 'number') {
                 resolve(r);
               } else {
                 results.push(r.roleId);
@@ -196,9 +194,9 @@ suite("DFA", () => {
           return results;
         };
         if (time) {
-          console.time("resolver(scope) x 10k");
+          console.time('resolver(scope) x 10k');
           _.range(10000).forEach(() => resolver(scope));
-          console.timeEnd("resolver(scope) x 10k");
+          console.timeEnd('resolver(scope) x 10k');
         }
 
         let results = resolveSet(resolver(scope));
@@ -209,11 +207,11 @@ suite("DFA", () => {
           let state = dfa.generateDFA(rs, 0, rs.length, 0, sets, 0);
 
           console.log(JSON.stringify(state, null, 2));
-          for(let i = 0; i < sets.length; i++) {
+          for (let i = 0; i < sets.length; i++) {
             let ids = sets[i].map(r => r.roleId || r);
-            console.log("raw sets[" + i + "] = " + JSON.stringify(ids));
+            console.log('raw sets[' + i + '] = ' + JSON.stringify(ids));
           }
-          console.log("result: "  + resolver(scope));
+          console.log('result: '  + resolver(scope));
         }
 
         if (_.xor(results, expected).length !== 0) {
@@ -221,11 +219,11 @@ suite("DFA", () => {
           console.log(expected);
           console.log('got:');
           console.log(results);
-          assert(false, "Expected different result!");
+          assert(false, 'Expected different result!');
         }
 
         if (maxSets) {
-          assert(sets.length <= maxSets, "more sets than allowed");
+          assert(sets.length <= maxSets, 'more sets than allowed');
         }
 
         let resolvedSets = [];
@@ -233,21 +231,21 @@ suite("DFA", () => {
           let resolved = resolveSet(index);
           let unique = _.uniq(resolved);
           if (resolved.length !== unique.length) {
-            console.log("Duplicates in set: " + resolved.join(','));
-            console.log("sets[" + index + "] = " + JSON.stringify(sets[index]));
-            assert(false, "Sets shouldn't have dupliates!");
+            console.log('Duplicates in set: ' + resolved.join(','));
+            console.log('sets[' + index + '] = ' + JSON.stringify(sets[index]));
+            assert(false, 'Sets shouldn\'t have dupliates!');
           }
-          resolved.sort()
+          resolved.sort();
           resolvedSets.forEach((rs, i2) => {
-            if(_.isEqual(rs, resolved)) {
-              console.log("Duplicated set: " + resolved.join(','));
-              console.log("sets[" + i2 + "] = " +
+            if (_.isEqual(rs, resolved)) {
+              console.log('Duplicated set: ' + resolved.join(','));
+              console.log('sets[' + i2 + '] = ' +
                           JSON.stringify(sets[i2]));
-              console.log("sets[" + index + "] = " +
+              console.log('sets[' + index + '] = ' +
                           JSON.stringify(sets[index]));
-              console.log("sets[" + i2 + "] -> " + JSON.stringify(rs));
-              console.log("sets[" + index + "] -> " + JSON.stringify(resolved));
-              assert(false, "Duplicate sets!!!");
+              console.log('sets[' + i2 + '] -> ' + JSON.stringify(rs));
+              console.log('sets[' + index + '] -> ' + JSON.stringify(resolved));
+              assert(false, 'Duplicate sets!!!');
             }
           });
           resolvedSets.push(resolved);
@@ -268,7 +266,7 @@ suite("DFA", () => {
   testBuildResolver('ab* matches ab, abc', {
     roleIds: ['a', 'ab', 'abc'],
     scope: 'assume:ab*',
-    expected: ['ab','abc'],
+    expected: ['ab', 'abc'],
   });
 
   testBuildResolver('a*, b*, c*', {
@@ -293,11 +291,11 @@ suite("DFA", () => {
   testBuildResolver('max sets (with long scopes)', {
     roleIds: [
       'ab*', 'aaaaaaaaaa*', 'aaaaaaaaaaaaaaaaaaaaaaaaa*',
-      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd',
     ],
     scope: 'assume:ab*',
     expected: ['ab*',
-      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd',
     ],
     maxSets: 6,
   });
@@ -305,11 +303,11 @@ suite("DFA", () => {
   testBuildResolver('timing with long scopes', {
     roleIds: [
       'ab*', 'aaaaaaaaaa*', 'aaaaaaaaaaaaaaaaaaaaaaaaa*',
-      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd',
     ],
     scope: 'assume:ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsa*',
     expected: ['ab*',
-      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd'
+      'ababaabdssafsdcsdcsacwscwcscsesdsdfdsfdsfsdfsfdsdfsdfsdfsafewfsewfwsd',
     ],
     maxSets: 6,
     time: true,
@@ -338,7 +336,7 @@ suite("DFA", () => {
   testBuildResolver('ab* matches a*', {
     roleIds: ['a*', 'aabc'],
     scope: 'assume:aa*',
-    expected: ['a*','aabc'],
+    expected: ['a*', 'aabc'],
   });
 
   testBuildResolver('* get all', {
@@ -387,13 +385,13 @@ suite("DFA", () => {
   testBuildResolver('ab* matches ab, abc', {
     roleIds: ['a', 'ab', 'abc'],
     scope: 'assume:ab*',
-    expected: ['ab','abc'],
+    expected: ['ab', 'abc'],
   });
 
   testBuildResolver('ab* matches a*', {
     roleIds: ['a*', 'ab', 'abc'],
     scope: 'assume:ab*',
-    expected: ['a*', 'ab','abc'],
+    expected: ['a*', 'ab', 'abc'],
   });
 
   testBuildResolver('ab match ab,a*', {
@@ -406,19 +404,19 @@ suite("DFA", () => {
   testBuildResolver('a*b* matches a*b, a*bc', {
     roleIds: ['a', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
     scope: 'assume:a*b*',
-    expected: ['a*b','a*bc'],
+    expected: ['a*b', 'a*bc'],
   });
 
   testBuildResolver('a*b matches a*, a*b', {
     roleIds: ['a*', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
     scope: 'assume:a*b',
-    expected: ['a*b','a*'],
+    expected: ['a*b', 'a*'],
   });
 
   testBuildResolver('a*b* matches a*b, a*bc', {
     roleIds: ['a*', 'a*b', 'a*bc', 'ab', 'abc', 'b*', 'c*', 'ab*'],
     scope: 'assume:a*b*',
-    expected: ['a*b','a*bc', 'a*'],
+    expected: ['a*b', 'a*bc', 'a*'],
   });
 
   testBuildResolver('try with 50', {
@@ -457,112 +455,112 @@ suite("DFA", () => {
       // cases with *
       scope:    '*',
       role:     '*',
-      result:   true
+      result:   true,
     }, {
       scope:    '*',
       role:     'client-id:queue',
-      result:   true
+      result:   true,
     }, {
       scope:    '*',
       role:     'task-run-id:*',
-      result:   true
+      result:   true,
     }, {
       // cases with as*
       scope:    'as*',
       role:     '*',
-      result:   true
+      result:   true,
     }, {
       scope:    'as*',
       role:     'client-id:queue',
-      result:   true
+      result:   true,
     }, {
       scope:    'as*',
       role:     'task-run-id:*',
-      result:   true
+      result:   true,
     }, {
       scope:    'queue:*',
       role:     'task-run-id:*',
-      result:   false
+      result:   false,
     }, {
       // cases with assume:*
       scope:    'assume:*',
       role:     'client-id:queue',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:*',
       role:     'task-run-id:*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:*',
       role:     '*',
-      result:   true
+      result:   true,
     }, {
       // cases with assume:<prefix>*
       scope:    'assume:thing-id:*',
       role:     'thing-id:queue',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:*',
       role:     'task-run-id:*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:*',
       role:     '*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:*',
       role:     'task-run-*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:*',
       role:     'client-id:queue',
-      result:   false
+      result:   false,
     }, {
       scope:    'assume:task-run-id:*',
       role:     'client-id:*',
-      result:   false
+      result:   false,
     }, {
       // cases with assume:roleId
       scope:    'assume:thing-id:queue',
       role:     'thing-id:queue',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:12345',
       role:     'task-run-id:72345',
-      result:   false
+      result:   false,
     }, {
       scope:    'assume:task-run-id:12345',
       role:     'task-run-id:*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:12345',
       role:     '*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:12345',
       role:     'task-run-*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:task-run-id:12345',
       role:     'client-id:*',
-      result:   false
+      result:   false,
     }, {
       scope:    'assume:a',
       role:     'a*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:a*',
       role:     'a*',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:a*',
       role:     'a',
-      result:   true
+      result:   true,
     }, {
       scope:    'assume:ab*',
       role:     'ac*',
-      result:   false
-    }
+      result:   false,
+    },
   ].forEach(({scope, role, result}) => {
     testBuildResolver(`grantsRole(${scope}, ${role}) === ${result}`, {
       roleIds: [role],
@@ -571,7 +569,6 @@ suite("DFA", () => {
       maxSets: 5,
     });
   });
-
 
   let testFixedPointComputation = (title, {roles, scope, expected}) => {
     test(title, () => {
@@ -583,7 +580,7 @@ suite("DFA", () => {
         console.log(expected);
         console.log('got:');
         console.log(results);
-        assert(false, "Expected different result!");
+        assert(false, 'Expected different result!');
       }
     });
   };
@@ -592,50 +589,49 @@ suite("DFA", () => {
     roles: [
       {
         roleId: 'client-id:root',
-        scopes: ['*']
-      }
+        scopes: ['*'],
+      },
     ],
     scope: '*',
-    expected: ['*']
+    expected: ['*'],
   });
 
   testFixedPointComputation('thing-id:* get all things', {
     roles: [
       {
         roleId: 'thing-id:star',
-        scopes: ['*']
-      }
+        scopes: ['*'],
+      },
     ],
     scope: 'assume:thing-id:*',
-    expected: ['*']
+    expected: ['*'],
   });
 
   testFixedPointComputation('star-scope-role get all', {
     roles: [
       {
         roleId: 'star-scope-role',
-        scopes: ['*']
-      }
+        scopes: ['*'],
+      },
     ],
     scope: 'assume:star-scope-role',
-    expected: ['*']
+    expected: ['*'],
   });
-
 
   testFixedPointComputation('test with stupid', {
     roles: [
       {
         roleId: 'thing-id:big-test',
-        scopes: ['assume:test-role-0']
+        scopes: ['assume:test-role-0'],
       }, {
         roleId: 'test-role-10',
-        scopes: ['special-scope']
+        scopes: ['special-scope'],
       }, {
         roleId: 'test-role-0',
-        scopes: ['assume:test-role-2']
+        scopes: ['assume:test-role-2'],
       }, {
         roleId: 'test-role-2',
-        scopes: ['assume:test-role-10']
+        scopes: ['assume:test-role-10'],
       },
     ],
     scope: 'assume:thing-id:big-test',
@@ -643,91 +639,90 @@ suite("DFA", () => {
       'special-scope',
       'assume:test-role-0',
       'assume:test-role-2',
-      'assume:test-role-10'
-    ]
+      'assume:test-role-10',
+    ],
   });
-
 
   const N = 500;
   testFixedPointComputation('test with N = ' + N, {
     roles: [
       {
         roleId: 'thing-id:c',
-        scopes: ['assume:tr-0']
+        scopes: ['assume:tr-0'],
       }, {
         roleId: 'tr-' + N,
-        scopes: ['special-scope']
-      }
+        scopes: ['special-scope'],
+      },
     ].concat(_.range(N).map(i => {
       return {
         roleId: 'tr-' + i,
-        scopes: ['assume:tr-' + (i + 1)]
+        scopes: ['assume:tr-' + (i + 1)],
       };
     })),
     scope: 'assume:thing-id:c',
     expected: [
-      'special-scope'
-    ].concat(_.range(N + 1).map(i => 'assume:tr-' + i))
+      'special-scope',
+    ].concat(_.range(N + 1).map(i => 'assume:tr-' + i)),
   });
 
   const M = 5;  // depth
   const K = 500; // multiplier
-  testFixedPointComputation('test with depth = ' + M + " x " + K, {
+  testFixedPointComputation('test with depth = ' + M + ' x ' + K, {
     roles: _.flatten([
       _.flatten(_.range(K).map(k => {
         return _.flatten(_.range(M).map(m => {
           return {
             roleId: 'k-' + k + '-' + m,
-            scopes: ['assume:k-' + k + '-' + (m + 1)]
+            scopes: ['assume:k-' + k + '-' + (m + 1)],
           };
         }));
       })),
       _.range(K).map(k => {
         return {
           roleId: 'k-' + k + '-' + M,
-          scopes: ['special-scope']
+          scopes: ['special-scope'],
         };
       }),
       [{
         roleId: 'thing-id:c',
-        scopes: ['assume:k-2-0']
-      }]
+        scopes: ['assume:k-2-0'],
+      }],
     ]),
     scope: 'assume:thing-id:c',
     expected: [
-      'special-scope'
-    ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i))
+      'special-scope',
+    ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i)),
   });
 
   _.range(100).forEach(i => {
     const M = _.random(3, 7);
     const K = _.random(7, 100);
-    let name = 'test with depth = ' + M + " x " + K + " (iteration: " + i + ")";
+    let name = 'test with depth = ' + M + ' x ' + K + ' (iteration: ' + i + ')';
     testFixedPointComputation(name, {
       roles: _.shuffle(_.flatten([
         _.flatten(_.range(K).map(k => {
           return _.flatten(_.range(M).map(m => {
             return {
               roleId: 'k-' + k + '-' + m,
-              scopes: ['assume:k-' + k + '-' + (m + 1)]
+              scopes: ['assume:k-' + k + '-' + (m + 1)],
             };
           }));
         })),
         _.range(K).map(k => {
           return {
             roleId: 'k-' + k + '-' + M,
-            scopes: ['special-scope']
+            scopes: ['special-scope'],
           };
         }),
         [{
           roleId: 'thing-id:c',
-          scopes: ['assume:k-2-0']
-        }]
+          scopes: ['assume:k-2-0'],
+        }],
       ])),
       scope: 'assume:thing-id:c',
       expected: _.shuffle([
-        'special-scope'
-      ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i)))
+        'special-scope',
+      ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i))),
     });
   });
 

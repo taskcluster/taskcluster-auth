@@ -6,8 +6,9 @@
   "scripts": {
     "compile": "babel-compile -p taskcluster src:lib test:.test",
     "test": "mocha .test/*_test.js",
-    "pretest": "npm run compile",
-    "install": "npm run compile",
+    "lint": "eslint src/*.js test/*.js",
+    "pretest": "yarn lint && yarn compile",
+    "install": "yarn compile",
     "checkStagingSetup": "heroku run -a taskcluster-auth-staging node bin/make-check-client.js",
     "checkStaging": "mocha .test/check-staging.js"
   },
@@ -52,11 +53,12 @@
     "typed-env-config": "^1.1.0"
   },
   "devDependencies": {
+    "eslint-config-taskcluster": "^3.0.0",
     "mocha": "^3.0.0"
   },
   "engine-strict": true,
   "engines": {
-    "node": "6.11.1",
-    "yarn": "0.27.5"
+    "node": "^8.0.0",
+    "yarn": "^1.0.0"
   }
 }
