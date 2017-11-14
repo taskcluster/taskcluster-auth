@@ -179,19 +179,19 @@ api.declare({
       Code:             'Success',
       Type:             'AWS-HMAC',
       LastUpdated:      new Date().toJSON(),
-      AccessKeyId:      iamReq.data.Credentials.AccessKeyId,
-      SecretAccessKey:  iamReq.data.Credentials.SecretAccessKey,
-      Token:            iamReq.data.Credentials.SessionToken,
-      Expiration:       new Date(iamReq.data.Credentials.Expiration).toJSON(),
+      AccessKeyId:      iamReq.Credentials.AccessKeyId,
+      SecretAccessKey:  iamReq.Credentials.SecretAccessKey,
+      Token:            iamReq.Credentials.SessionToken,
+      Expiration:       new Date(iamReq.Credentials.Expiration).toJSON(),
     });
   }
 
   return res.reply({
     credentials: {
-      accessKeyId:      iamReq.data.Credentials.AccessKeyId,
-      secretAccessKey:  iamReq.data.Credentials.SecretAccessKey,
-      sessionToken:     iamReq.data.Credentials.SessionToken,
+      accessKeyId:      iamReq.Credentials.AccessKeyId,
+      secretAccessKey:  iamReq.Credentials.SecretAccessKey,
+      sessionToken:     iamReq.Credentials.SessionToken,
     },
-    expires:            new Date(iamReq.data.Credentials.Expiration).toJSON(),
+    expires:            new Date(iamReq.Credentials.Expiration).toJSON(),
   });
 });

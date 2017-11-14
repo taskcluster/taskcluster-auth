@@ -188,15 +188,24 @@ asynckit@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
 
-aws-sdk-promise@^0.0.2:
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/aws-sdk-promise/-/aws-sdk-promise-0.0.2.tgz#2886bd1fc4c47ebcb9afdd6c597cf4260fb9e5e8"
+aws-sdk@^2.149.0:
+  version "2.149.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.149.0.tgz#76f53722a7780bdb3191e83f27c10108c6fe9813"
   dependencies:
-    promise "^6.1.0"
+    buffer "4.9.1"
+    crypto-browserify "1.0.9"
+    events "^1.1.1"
+    jmespath "0.15.0"
+    querystring "0.2.0"
+    sax "1.2.1"
+    url "0.10.3"
+    uuid "3.1.0"
+    xml2js "0.4.17"
+    xmlbuilder "4.2.1"
 
-aws-sdk@^2.2.0, aws-sdk@^2.4.9, aws-sdk@^2.5.3:
-  version "2.23.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.23.0.tgz#f7739eec5d4f28cca2dedf788a36477153441fe7"
+aws-sdk@^2.2.28, aws-sdk@^2.2.38, aws-sdk@^2.30.0:
+  version "2.33.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.33.0.tgz#67c101bbaad177af3e978f775800de135244814e"
   dependencies:
     buffer "4.9.1"
     crypto-browserify "1.0.9"
@@ -208,9 +217,9 @@ aws-sdk@^2.2.0, aws-sdk@^2.4.9, aws-sdk@^2.5.3:
     xml2js "0.4.15"
     xmlbuilder "2.6.2"
 
-aws-sdk@^2.2.28, aws-sdk@^2.2.38, aws-sdk@^2.30.0:
-  version "2.33.0"
-  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.33.0.tgz#67c101bbaad177af3e978f775800de135244814e"
+aws-sdk@^2.4.9, aws-sdk@^2.5.3:
+  version "2.23.0"
+  resolved "https://registry.yarnpkg.com/aws-sdk/-/aws-sdk-2.23.0.tgz#f7739eec5d4f28cca2dedf788a36477153441fe7"
   dependencies:
     buffer "4.9.1"
     crypto-browserify "1.0.9"
@@ -882,6 +891,10 @@ etag@~1.4.0:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.4.0.tgz#3050991615857707c04119d075ba2088e0701225"
   dependencies:
     crc "3.0.0"
+
+events@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/events/-/events-1.1.1.tgz#9ebdb7635ad099c70dcc4c2a1f5004288e8bd924"
 
 eventsource@0.1.6:
   version "0.1.6"
@@ -2340,6 +2353,10 @@ sax@1.1.5, sax@>=0.6.0:
   version "1.1.5"
   resolved "https://registry.yarnpkg.com/sax/-/sax-1.1.5.tgz#1da50a8d00cdecd59405659f5ff85349fe773743"
 
+sax@1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/sax/-/sax-1.2.1.tgz#7b8e656190b228e81a66aea748480d828cd2d37a"
+
 semver@^5.3.0:
   version "5.4.1"
   resolved "https://registry.yarnpkg.com/semver/-/semver-5.4.1.tgz#e059c09d8571f0540823733433505d3a2f00b18e"
@@ -3063,6 +3080,10 @@ uuid@3.0.0, uuid@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.0.0.tgz#6728fc0459c450d796a99c31837569bdf672d728"
 
+uuid@3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-3.1.0.tgz#3dd3d3e790abc24d7b0d3a034ffababe28ebbc04"
+
 uuid@^2.0.1, uuid@^2.0.2:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/uuid/-/uuid-2.0.3.tgz#67e2e863797215530dff318e5bf9dcebfd47b21a"
@@ -3141,11 +3162,24 @@ xml2js@0.4.15:
     sax ">=0.6.0"
     xmlbuilder ">=2.4.6"
 
+xml2js@0.4.17:
+  version "0.4.17"
+  resolved "https://registry.yarnpkg.com/xml2js/-/xml2js-0.4.17.tgz#17be93eaae3f3b779359c795b419705a8817e868"
+  dependencies:
+    sax ">=0.6.0"
+    xmlbuilder "^4.1.0"
+
 xmlbuilder@2.6.2, xmlbuilder@>=2.4.6:
   version "2.6.2"
   resolved "https://registry.yarnpkg.com/xmlbuilder/-/xmlbuilder-2.6.2.tgz#f916f6d10d45dc171b1be2e6e673fb6e0cc35d0a"
   dependencies:
     lodash "~3.5.0"
+
+xmlbuilder@4.2.1, xmlbuilder@^4.1.0:
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/xmlbuilder/-/xmlbuilder-4.2.1.tgz#aa58a3041a066f90eaa16c2f5389ff19f3f461a5"
+  dependencies:
+    lodash "^4.0.0"
 
 xtend@^4.0.0, xtend@^4.0.1, xtend@~4.0.1:
   version "4.0.1"

@@ -3,7 +3,7 @@ suite('aws S3 (STS)', () => {
   var assert      = require('assert');
   var slugid      = require('slugid');
   var _           = require('lodash');
-  var aws         = require('aws-sdk-promise');
+  var aws         = require('aws-sdk');
   var helper      = require('./helper');
   var debug       = require('debug')('s3_test');
 
@@ -35,7 +35,7 @@ suite('aws S3 (STS)', () => {
       Bucket:   bucket,
       Key:      'folder1/folder2/' + id,
     }).promise();
-    assert(res.data.Body.toString() === text,
+    assert(res.Body.toString() === text,
       'Got the wrong body!');
 
     debug('### s3.deleteObject');
@@ -71,7 +71,7 @@ suite('aws S3 (STS)', () => {
       Bucket:   bucket,
       Key:      id,
     }).promise();
-    assert(res.data.Body.toString() === text,
+    assert(res.Body.toString() === text,
       'Got the wrong body!');
 
     debug('### s3.deleteObject');
@@ -136,7 +136,7 @@ suite('aws S3 (STS)', () => {
       Bucket:   bucket,
       Key:      'folder1/' + id,
     }).promise();
-    assert(res.data.Body.toString() === text,
+    assert(res.Body.toString() === text,
       'Got the wrong body!');
 
     try {
