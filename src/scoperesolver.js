@@ -4,8 +4,8 @@ var taskcluster = require('taskcluster-client');
 var events      = require('events');
 var debug       = require('debug')('auth:ScopeResolver');
 var Promise     = require('promise');
-var dfa         = require('./dfa');
 var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
+var {generateTrie, executeTrie} = require('./trie');
 
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
@@ -33,7 +33,7 @@ class ScopeResolver extends events.EventEmitter {
     // }
     this._clients = [];
     // List of role objects on the form:
-    // {roleId: '...', scopes: [...], expandedScopes: [...]}
+    // {roleId: '...', scopes: [...]}
     this._roles = [];
 
     // Mapping from clientId to client objects from _clients,
@@ -115,6 +115,18 @@ class ScopeResolver extends events.EventEmitter {
     await this._roleListener.resume();
   }
 
+  /** Update lastDateUsed for a clientId */
+  async _updateLastUsed(clientId) {
+    let client = await this._Client.load({clientId});
+    await client.modify(client => {
+      let lastUsedDate = new Date(client.details.lastDateUsed);
+      let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
+      if (lastUsedDate < minLastUsed) {
+        client.details.lastDateUsed = new Date().toJSON();
+      }
+    });
+  }
+
   /**
    * Execute async `reloader` function, after any earlier async `reloader`
    * function given this function has completed. Ensuring that the `reloader`
@@ -143,7 +155,7 @@ class ScopeResolver extends events.EventEmitter {
           disabled:         client.disabled,
         });
       }
-      this._computeFixedPoint();
+      this._rebuildResolver();
     });
   }
 
@@ -154,14 +166,9 @@ class ScopeResolver extends events.EventEmitter {
       this._roles = this._roles.filter(r => r.roleId !== roleId);
       // If a role was loaded add it back
       if (role) {
-        let scopes = role.scopes;
-        if (!role.roleId.endsWith('*')) {
-          // For reasoning on structure, see reload()
-          scopes = _.union(scopes, ['assume:' + role.roleId]);
-        }
-        this._roles.push({roleId: role.roleId, scopes});
+        this._roles.push({roleId: role.roleId, scopes: role.scopes});
       }
-      this._computeFixedPoint();
+      this._rebuildResolver();
     });
   }
 
@@ -175,7 +182,7 @@ class ScopeResolver extends events.EventEmitter {
       await Promise.all([
         // Load all clients on a simplified form:
         // {clientId, accessToken, updateLastUsed}
-        // _computeFixedPoint() will construct the `_clientCache` object
+        // _rebuildResolver() will construct the `_clientCache` object
         this._Client.scan({}, {
           handler: client => {
             let lastUsedDate = new Date(client.details.lastDateUsed);
@@ -194,39 +201,24 @@ class ScopeResolver extends events.EventEmitter {
           },
         }),
         // Load all roles on a simplified form: {roleId, scopes}
-        // _computeFixedPoint() will later add the `expandedScopes` property
         this._Role.scan({}, {
           handler(role) {
-            let scopes = role.scopes;
-            if (!role.roleId.endsWith('*')) {
-              // Ensure identity, if role isn't a prefix pattern. Obviously,
-              // 'assume:ab' which matches 'assume:a*' doesn't have 'assume:a*'
-              // by the identity relation. But for non-prefix patterns, the
-              // identify relation implies that you have 'assume:<roleId>'.
-              // This speeds up fixed-point computation, and means that if you
-              // have a match without any *, then you can look up the role, and
-              // not have to worry about any prefix patterns that may also match
-              // as they are already saturated.
-              scopes = _.union(scopes, ['assume:' + role.roleId]);
-            }
-            roles.push({roleId: role.roleId, scopes});
+            roles.push({roleId: role.roleId, scopes: role.scopes});
           },
         }),
       ]);
 
       // Set _roles and _clients at the same time and immediately call
-      // _computeFixedPoint, so anyone using the cache is using a consistent one
+      // _rebuildResolver, so anyone using the cache is using a consistent one
       this._roles = roles;
       this._clients = clients;
-      this._computeFixedPoint();
+      this._rebuildResolver();
     });
   }
 
   /** Compute fixed point over this._roles, and construct _clientCache */
-  _computeFixedPoint() {
-    //console.time("_computeFixedPoint");
-    this._resolver = dfa.computeFixedPoint(this._roles);
-    //console.timeEnd("_computeFixedPoint");
+  _rebuildResolver() {
+    this._resolver = this.buildResolver(this._roles);
 
     // Construct client cache
     this._clientCache = {};
@@ -238,17 +230,44 @@ class ScopeResolver extends events.EventEmitter {
     }
   }
 
-  /** Update lastDateUsed for a clientId */
-  async _updateLastUsed(clientId) {
-    let client = await this._Client.load({clientId});
-    await client.modify(client => {
-      let lastUsedDate = new Date(client.details.lastDateUsed);
-      let minLastUsed = taskcluster.fromNow(this._maxLastUsedDelay);
-      if (lastUsedDate < minLastUsed) {
-        client.details.lastDateUsed = new Date().toJSON();
-      }
+  /**
+   * Build a resolver which, given a set of scopes, will return the expanded
+   * set of scopes based on the given roles.  Roles are an array of elements
+   * {roleId, scopes}.
+   */
+  buildResolver(roles) {
+    let rules = roles.map(({roleId, scopes}) => {
+      let pattern = `assume:${roleId}`;
+      return {pattern, scopes};
     });
-  }
+
+    let dfa = generateTrie(rules);
+    const assumePrefix = /^(:?(:?|a|as|ass|assu|assum|assum|assume)\*$|assume:)/;
+
+    return (inputs) => {
+      let scopes = inputs;
+      let seen = new Set();
+      let i = 0;
+      while (i < scopes.length) {
+        let scope = scopes[i++];
+        // if this scope is not going to expand, ignore it
+        if (!assumePrefix.test(scope)) {
+          continue;
+        }
+        // if we have seen this scope, ignore it
+        if (seen.has(scope)) {
+          continue;
+        }
+        seen.add(scope);
+        // (for the moment, ignore the indexed return style of executeTrie)
+        scopes = scopes.concat(_.flatten(executeTrie(dfa, scope)).filter(e => e));
+      }
+
+      // normalize the resulting set of scopes
+      scopes.sort(scopeCompare);
+      return normalizeScopeSet(scopes);
+    };
+  };
 
   /**
    * Return a normalized set of scopes that `scopes` can be expanded to when
@@ -256,17 +275,7 @@ class ScopeResolver extends events.EventEmitter {
    */
 
   resolve(scopes) {
-    // normalize to remove any duplicates
-    scopes = _.clone(scopes);
-    scopes.sort(scopeCompare);
-    let granted = normalizeScopeSet(scopes);
-    for (let scope of scopes) {
-      let found = this._resolver(scope);
-      if (found.length > 0) {
-        granted = mergeScopeSets(granted, found);
-      }
-    }
-    return granted;
+    return this._resolver(scopes);
   }
 
   async loadClient(clientId) {
