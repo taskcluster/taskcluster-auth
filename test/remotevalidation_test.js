@@ -7,7 +7,7 @@ suite('Remote Signature Validation', function() {
   var _           = require('lodash');
   var assume      = require('assume');
   var taskcluster = require('taskcluster-client');
-  var request     = require('superagent-promise');
+  var request     = require('superagent');
 
   var rootCredentials = {
     clientId: 'root',
@@ -31,7 +31,7 @@ suite('Remote Signature Validation', function() {
     var signedUrl = helper.testClient.buildSignedUrl(
       helper.testClient.resource
     );
-    var res = await request.get(signedUrl).end();
+    var res = await request.get(signedUrl);
     assert(res.body.message === 'Hello World');
   });
 
