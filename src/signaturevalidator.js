@@ -9,7 +9,6 @@ require('superagent-hawk')(require('superagent'));
 var utils         = require('taskcluster-lib-scopes');
 var hoek          = require('hoek');
 var https         = require('https');
-var cryptiles     = require('cryptiles');
 var crypto        = require('crypto');
 
 /**
@@ -121,7 +120,7 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
 
     // Validate signature
     if (typeof cert.signature !== 'string' ||
-        !cryptiles.fixedTimeComparison(cert.signature, signature)) {
+        !crypto.timingSafeEqual(Buffer.from(cert.signature), Buffer.from(signature))) {
       if (cert.issuer) {
         throw new Error('ext.certificate.signature is not valid, or wrong clientId provided');
       } else {
