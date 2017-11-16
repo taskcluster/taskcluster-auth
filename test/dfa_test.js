@@ -3,6 +3,7 @@ suite('DFA', () => {
   let dfa = require('../src/dfa');
   let assert = require('assert');
   let _ = require('lodash');
+  let fs = require('fs');
 
   suite('role sorting', function() {
     let testSortRoles = ({title, roleIds, sorted}) => {
@@ -732,5 +733,170 @@ suite('DFA', () => {
         ].concat(_.range(M + 1).map(i => 'assume:k-2-' + i))),
       });
     });
+  });
+
+  suite('performance', function() {
+    const makeResolver = roles => {
+      const res = dfa.computeFixedPoint(roles);
+      return scopes => {
+        scopes.sort(dfa.scopeCompare);
+        return _.reduce(scopes.map(res), (a, b) => dfa.mergeScopeSets(a, b), scopes);
+      };
+    };
+
+    const shouldMeasure = process.env.MEASURE_PERFORMANCE;
+    const measureN = 50;
+    const measureSkip = 5; // initial runs to skip (allows JIT warmup)
+    const timings = [];
+
+    const testResolver = (title, {roles, scopes, expected}) => {
+      test(title, function() {
+        let timing, time;
+        if (shouldMeasure) {
+          // this could take a while..
+          this.slow(3600000);
+          this.timeout(0);
+
+          timing = {title};
+          timings.push(timing);
+          time = (step, fn) => {
+            let result;
+            timing[step] = [];
+            for (let i = 0; i < measureN; i++) {
+              const start = process.hrtime();
+              result = fn();
+              const took = process.hrtime(start);
+              timing[step].push(took[0] * 1000000000 + took[1]);
+            }
+            timing[step].splice(0, measureSkip);
+            let mean = _.reduce(timing[step], (a, b) => a + b) / timing[step].length;
+            let unit = 'ns';
+            if (mean > 1000) {
+              mean /= 1000;
+              unit = 'μs';
+            }
+            if (mean > 1000) {
+              mean /= 1000;
+              unit = 'ms';
+            }
+            console.log(`${step}: ${mean.toFixed(2)} ${unit}`);
+            return result;
+          };
+        } else {
+          time = (step, fn) => fn();
+        }
+
+        let resolver = time('setup', () => makeResolver(roles));
+        let result = time('execute', () => resolver(scopes));
+        if (expected) {
+          expected.sort(dfa.scopeCompare);
+          assert.deepEqual(expected, resolver(scopes));
+        }
+      });
+    };
+
+    suiteTeardown(function() {
+      if (!shouldMeasure) {
+        return;
+      }
+
+      fs.writeFileSync('timings.json', JSON.stringify(timings, null, 2));
+      console.log('timings written to timings.json');
+    });
+
+    // test a chain of N roles, each one leading to the next
+    // ch-1 -> ... -> assume:ch-N -> special-scope
+    const testChain = N => {
+      testResolver(`chain of ${N} roles`, {
+        roles: _.range(N).map(i => ({roleId: `ch-${i}`, scopes: [`assume:ch-${i+1}`]})).concat([
+          {roleId: `ch-${N}`, scopes: ['special-scope']},
+        ]),
+        scopes: ['assume:ch-0'],
+        expected: _.range(N).map(i => `assume:ch-${i}`).concat([
+          `assume:ch-${N}`,
+          'special-scope',
+        ]),
+      });
+    };
+    testChain(500);
+    if (shouldMeasure) {
+      testChain(750);
+      testChain(1000);
+      testChain(1250);
+      testChain(1500);
+    }
+
+    // test a tree of roles H roles deep, with each row growing by W
+    // t ---> t-1 ---> t-1-1 ---> ... t-1-1-1-1-1
+    //        t-2 ..   t-1-2            \---H---/
+    //        ..       ..
+    //        t-W ..
+    const testTree = (W, H) => {
+      const roles = [];
+      const recur = (prefix, h) => {
+        const roleIds = _.range(W).map(w => `${prefix}-${w}`);
+        if (h != H) {
+          roleIds.forEach(roleId => recur(roleId, h+1));
+        }
+        roles.push({
+          roleId: prefix,
+          scopes: roleIds.map(roleId => `assume:${roleId}`),
+        });
+      };
+      recur('t', 0);
+
+      testResolver(`tree of ${W}x${H} roles`, {
+        roles,
+        scopes: ['assume:t'],
+        expected: _.flatten(roles.map(r => r.scopes)).concat(['assume:t']),
+      });
+    };
+    testTree(2, 3);
+    if (shouldMeasure) {
+      testTree(1, 4);
+      testTree(2, 4);
+      testTree(2, 5);
+      testTree(2, 6);
+      testTree(3, 3);
+      testTree(3, 4);
+      testTree(3, 5);
+      testTree(4, 4);
+    }
+
+    // Test with a snapshot of real roles, captured with
+    //   `curl https://auth.taskcluster.net/v1/roles`
+    const realRoles = require('./roles');
+    const testRealRoles = (scopes, expected) => {
+      testResolver(`real roles with scopes ${scopes.join(', ')}`, {
+        roles: realRoles,
+        scopes,
+        expected,
+      });
+    };
+
+  	testRealRoles(['assume:*'], [
+      'assume:*',
+      'auth:*',
+      'aws-provisioner:*',
+      'docker-worker:*',
+      'ec2-manager:*',
+      'generic-worker:*',
+      'github:*',
+      'hooks:*',
+      'index:*',
+      'notify:*',
+      'project:*',
+      'pulse:*',
+      'purge-cache:*',
+      'queue:*',
+      'scheduler:*',
+      'secrets:*',
+  	]);
+
+  	testRealRoles(['assume:repo:github.com/*']);
+  	testRealRoles(['assume:worker-type:*']);
+  	testRealRoles(['assume:mozilla-user:*']);
+  	testRealRoles(['assume:mozilla-group:team_taskcluster']);
+  	testRealRoles(['assume:moz-tree:level:3']);
   });
 });
