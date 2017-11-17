@@ -82,6 +82,20 @@ a scope-set containing `"assume:project-admin:zap"` would expand to include
 
 Multiple `<..>` are allowed in the same scope.
 
+### Circular Roles
+
+It is possible to construct parameterized roles which would expand infinitely.
+For example:
+
+```
+[
+project-admin:* -> assume:project-admin:subproject:<...>
+]
+```
+
+Such cyclical configurations of roles are forbidden and will result in an
+error. In practice, such configurations are always a mistake, anyway.
+
 ### Stars in Parameters
 
 *WARNING*: be careful using `*` in scopes that will be expanded with a

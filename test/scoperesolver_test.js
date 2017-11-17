@@ -493,6 +493,109 @@ suite('scoperesolver', () => {
     testRealRoles(['assume:moz-tree:level:3']);
   });
 
+  suite('cycleCheck', function() {
+    const testCycle = (title, expectCycle, roles) => {
+      test(title, function() {
+        _.range(100).forEach(() => {
+          _.shuffle(roles);
+          try {
+            ScopeResolver.cycleCheck(roles);
+          } catch (e) {
+            if (expectCycle && e.message.startsWith('Found cycle in roles:')) {
+              return;
+            }
+            throw e;
+          }
+          assert(!expectCycle, 'expected a cycle');
+        });
+      });
+    };
+
+    testCycle('self-referential simple role', false, [
+      {roleId: 'abc', scopes: ['assume:abc']},
+    ]);
+
+    testCycle('four simple roles, pointing to each other', false, [
+      {roleId: 'abc', scopes: ['assume:def']},
+      {roleId: 'def', scopes: ['assume:ghi']},
+      {roleId: 'ghi', scopes: ['assume:jkl']},
+      {roleId: 'jkl', scopes: ['assume:abc']},
+    ]);
+
+    testCycle('inter-referential roles among others', false, [
+      {roleId: 'abc', scopes: ['assume:def']},
+      {roleId: 'def', scopes: ['assume:abc']},
+      {roleId: 'ghi', scopes: ['assume:xyz']},
+      {roleId: 'jkl', scopes: ['assume:xyz']},
+    ]);
+
+    testCycle('no cycles', false, [
+      {roleId: 'abc', scopes: ['assume:xyz']},
+      {roleId: 'def', scopes: ['assume:xyz']},
+      {roleId: 'ghi', scopes: ['assume:xyz']},
+      {roleId: 'jkl', scopes: ['assume:xyz']},
+      {roleId: 'xyz', scopes: ['some-scope']},
+    ]);
+
+    testCycle('self-referential role with * in scopes', false, [
+      {roleId: 'abc', scopes: ['assume:ab*']},
+    ]);
+
+    testCycle('self-referential role with * in roleId', false, [
+      {roleId: 'ab*', scopes: ['assume:abc']},
+    ]);
+
+    testCycle('self-referential role with * in roleId and scopes', false, [
+      {roleId: 'ab*', scopes: ['assume:abc*']},
+    ]);
+
+    testCycle('four inter-referential roles with *s', false, [
+      {roleId: 'abc', scopes: ['assume:d*']},
+      {roleId: 'def', scopes: ['assume:ghi']},
+      {roleId: 'g*', scopes: ['assume:jkl']},
+      {roleId: 'jkl', scopes: ['assume:abc*']},
+    ]);
+
+    testCycle('cycle containing a single parameterized role with no suffix', true, [
+      {roleId: 'a*', scopes: ['assume:ab<..>']},
+    ]);
+
+    testCycle('cycle containing a single parameterized role with a suffix', true, [
+      {roleId: 'a*', scopes: ['assume:a<..>x']},
+    ]);
+
+    testCycle('cycle containing a single parameterized role with a prefix and suffix', true, [
+      {roleId: 'a*', scopes: ['assume:ab<..>x']},
+    ]);
+
+    testCycle('cycle containing two parameterized roles', true, [
+      {roleId: 'a*', scopes: ['assume:b<..>x']},
+      {roleId: 'b*', scopes: ['assume:a<..>']},
+    ]);
+
+    testCycle('cycle containing two parameterized roles where scope is prefix of role', true, [
+      {roleId: 'a*', scopes: ['assume:b<..>x']},
+      {roleId: 'bstuff*', scopes: ['assume:a<..>']},
+    ]);
+
+    testCycle('cycle containing two parameterized roles where role is prefix of scope', true, [
+      {roleId: 'a*', scopes: ['assume:bstuff<..>x']},
+      {roleId: 'b*', scopes: ['assume:a<..>']},
+    ]);
+
+    testCycle('cycle with a partial appearance of "assume:"', true, [
+      // note that this would actually be stable, since the replacement is shorter, but we still
+      // want to forbid this
+      {roleId: 'b*', scopes: ['as<..>']},
+    ]);
+
+    testCycle('roles with some parameters but a fixed point', false, [
+      {roleId: 'b*', scopes: ['assume:cd<..>']},
+      {roleId: 'cde*', scopes: ['assume:de<..>x']},
+      {roleId: 'd*', scopes: ['assume:bx']},
+    ]);
+  });
+
   suite('normalizeScopes', () => {
     // Test cases for normalizeScopes
     [

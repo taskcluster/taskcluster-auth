@@ -8,6 +8,7 @@ var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib
 var {generateTrie, executeTrie} = require('./trie');
 
 const ASSUME_PREFIX = /^(:?(:?|a|as|ass|assu|assum|assum|assume)\*$|assume:)/;
+const PARAMETERIZED_SCOPE = /^(:?|a|as|ass|assu|assum|assum|assume|assume:.*)<\.\.>/;
 const PARAMETER = /<\.\.\>/;
 const PARAMETER_G = /<\.\.\>/g;
 const PARAMETER_TO_END = /<\.\.>.*/;
@@ -221,6 +222,22 @@ class ScopeResolver extends events.EventEmitter {
     });
   }
 
+  /**
+   * Verify that the existing set of roles, plus the given role (or without it if
+   * scopes is undefined), is valid.  If not, this will raise an informative exception.
+   */
+  checkUpdatedRole(roleId, scopes) {
+    let roles = _.clone(this._roles);
+    // Always remove it
+    roles = roles.filter(r => r.roleId !== roleId);
+    // If a role was loaded add it back
+    if (scopes) {
+      roles.push({roleId, scopes});
+    }
+
+    ScopeResolver.cycleCheck(roles);
+  }
+
   /** Compute fixed point over this._roles, and construct _clientCache */
   _rebuildResolver() {
     this._resolver = this.buildResolver(this._roles);
@@ -236,11 +253,85 @@ class ScopeResolver extends events.EventEmitter {
   }
 
   /**
+   * Throw an informative exception if this set of roles has a cycle that would
+   * lead to unbounded role expansion.
+   *
+   * Such a cycle must contain *only* parameterized expansions (`..*` ->
+   * `assume:..<..>..`).  Any non-parameterized expansions in a cycle would
+   * always produce the same expansion, resulting in a fixed point.
+   */
+  static cycleCheck(roles) {
+    let paramRules = [];
+
+    // find the set of parameterized rules and strip * and parameters from them
+    let roleIds = roles.map(({roleId}) => roleId);
+    roles.forEach(({roleId, scopes}) => {
+      if (!roleId.endsWith('*')) {
+        return;
+      }
+      roleId = roleId.slice(0, -1);
+      scopes.forEach(scope => {
+        if (!PARAMETERIZED_SCOPE.test(scope)) {
+          return;
+        }
+        // strip `assume:` and any parameters
+        scope = scope.replace(PARAMETER_TO_END, '').slice(7);
+        paramRules.push({roleId, scope});
+      });
+    });
+
+    // turn those into edges, with an edge wherever r is a prefix of s or s is a prefix of r
+    let edges = {};
+    for (let {roleId: roleId1, scope: scope1} of paramRules) {
+      for (let {roleId: roleId2} of paramRules) {
+        if (scope1.startsWith(roleId2) || roleId2.startsWith(scope1)) {
+          if (edges[roleId1]) {
+            edges[roleId1].push(roleId2);
+          } else {
+            edges[roleId1] = [roleId2];
+          }
+        }
+      }
+    }
+
+    // Use depth-first searches from each node to find any cycles in the edges collected above.
+    // The graph may not be connected, so we must start from each node, but once we have visited
+    // a node we need not start there again
+    let done = new Set();
+    _.keys(edges).forEach(start => {
+      let seen = [];
+      let visit = roleId => {
+        if (done.has(start)) {
+          return;
+        }
+        if (seen.indexOf(roleId) !== -1) {
+          return seen.slice(seen.indexOf(roleId)).concat([roleId]);
+        }
+        seen.push(roleId);
+        for (let edge of edges[roleId] || []) {
+          let cycle = visit(edge);
+          if (cycle) {
+            return cycle;
+          }
+        }
+        done.add(seen.pop());
+      };
+
+      let cycle = visit(start);
+      if (cycle) {
+        throw new Error(`Found cycle in roles: ${cycle.map(c => `${c}*`).join(' -> ')}`);
+      }
+    });
+  };
+
+  /**
    * Build a resolver which, given a set of scopes, will return the expanded
    * set of scopes based on the given roles.  Roles are an array of elements
    * {roleId, scopes}.
    */
   buildResolver(roles) {
+    ScopeResolver.cycleCheck(roles);
+
     // encode the roles as rules, including the `assume:` prefix, and marking up
     // the expansions of any parameterized scopes as {scope, index}, where index
     // is the index in the input at which the replacement begins (the index of
