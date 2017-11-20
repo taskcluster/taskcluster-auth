@@ -267,6 +267,62 @@ suite('scoperesolver', () => {
       scopes: ['assume:a*b*'],
       expected: ['assume:a*b*', 'ASTARB', 'ASTARBC', 'ASTAR'],
     });
+
+    testResolver('basic parameterized role', {
+      roles: [
+        {roleId: 'a*', scopes:['A<..>']},
+      ],
+      scopes: ['assume:abc'],
+      expected: ['assume:abc', 'Abc'],
+    });
+
+    testResolver('basic parameterized role, matched with *', {
+      roles: [
+        {roleId: 'a*', scopes:['A<..>']},
+      ],
+      scopes: ['assume:abc*'],
+      expected: ['assume:abc*', 'Abc*'],
+    });
+
+    testResolver('parameterized role with suffix', {
+      roles: [
+        {roleId: 'a*', scopes:['A<..>X']},
+      ],
+      scopes: ['assume:abc'],
+      expected: ['assume:abc', 'AbcX'],
+    });
+
+    testResolver('parameterized role with suffix, matched with *', {
+      roles: [
+        {roleId: 'a*', scopes:['A<..>X']},
+      ],
+      scopes: ['assume:abc*'],
+      expected: ['assume:abc*', 'Abc*'],
+    });
+
+    testResolver('parameterized role with suffix, matched with a shorter *', {
+      roles: [
+        {roleId: 'abc*', scopes:['ABC<..>DEF']},
+      ],
+      scopes: ['assume:a*'],
+      expected: ['assume:a*', 'ABC*'],
+    });
+
+    testResolver('parameterized role with two replacements', {
+      roles: [
+        {roleId: 'abc*', scopes:['ABC<..>DEF<..>GHI']},
+      ],
+      scopes: ['assume:abc/'],
+      expected: ['assume:abc/', 'ABC/DEF/GHI'],
+    });
+
+    testResolver('parameterized role with two replacements, matched with *', {
+      roles: [
+        {roleId: 'abc*', scopes:['ABC<..>DEF<..>GHI']},
+      ],
+      scopes: ['assume:abc/*'],
+      expected: ['assume:abc/*', 'ABC/*'],
+    });
   });
 
   suite('performance', function() {

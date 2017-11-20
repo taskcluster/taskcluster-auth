@@ -7,6 +7,11 @@ var Promise     = require('promise');
 var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 var {generateTrie, executeTrie} = require('./trie');
 
+const ASSUME_PREFIX = /^(:?(:?|a|as|ass|assu|assum|assum|assume)\*$|assume:)/;
+const PARAMETER = /<\.\.\>/;
+const PARAMETER_G = /<\.\.\>/g;
+const PARAMETER_TO_END = /<\.\.>.*/;
+
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
   constructor(options = {}) {
@@ -236,13 +241,13 @@ class ScopeResolver extends events.EventEmitter {
    * {roleId, scopes}.
    */
   buildResolver(roles) {
-    let rules = roles.map(({roleId, scopes}) => {
-      let pattern = `assume:${roleId}`;
-      return {pattern, scopes};
-    });
+    // encode the roles as rules, including the `assume:` prefix, and marking up
+    // the expansions of any parameterized scopes as {scope, index}, where index
+    // is the index in the input at which the replacement begins (the index of
+    // the `*`)
 
+    let rules = roles.map(({roleId, scopes}) => ({pattern: `assume:${roleId}`, scopes}));
     let dfa = generateTrie(rules);
-    const assumePrefix = /^(:?(:?|a|as|ass|assu|assum|assum|assume)\*$|assume:)/;
 
     return (inputs) => {
       let scopes = inputs;
@@ -251,7 +256,7 @@ class ScopeResolver extends events.EventEmitter {
       while (i < scopes.length) {
         let scope = scopes[i++];
         // if this scope is not going to expand, ignore it
-        if (!assumePrefix.test(scope)) {
+        if (!ASSUME_PREFIX.test(scope)) {
           continue;
         }
         // if we have seen this scope, ignore it
@@ -259,8 +264,21 @@ class ScopeResolver extends events.EventEmitter {
           continue;
         }
         seen.add(scope);
-        // (for the moment, ignore the indexed return style of executeTrie)
-        scopes = scopes.concat(_.flatten(executeTrie(dfa, scope)).filter(e => e));
+
+        // eecute the DFA and expand any parameterizations in the result, then add
+        // the newly expanded scopes to the list of scopes to expand (recursively)
+        const trailingStar = scope.endsWith('*');
+        executeTrie(dfa, scope).forEach((expansion, k) => {
+          if (!expansion) {
+            return;
+          }
+          // Get the replacement slice for any parameterization. If this is empty and the
+          // scope ended with `*`, consider that `*` to have been extended into the
+          // replacement.
+          const slice = scope.slice(k) || (trailingStar ? '*' : '');
+          const parameter_regexp = trailingStar ? PARAMETER_TO_END : PARAMETER_G;
+          scopes = scopes.concat(expansion.map(s => s.replace(parameter_regexp, slice)));
+        });
       }
 
       // normalize the resulting set of scopes
