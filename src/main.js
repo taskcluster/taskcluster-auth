@@ -5,6 +5,7 @@ let Monitor            = require('taskcluster-lib-monitor');
 let App                = require('taskcluster-lib-app');
 let Config             = require('typed-env-config');
 let data               = require('./data');
+let containers         = require('./containers');
 let v1                 = require('./v1');
 let path               = require('path');
 let debug              = require('debug')('server');
@@ -89,6 +90,18 @@ let load = Loader({
         signingKey:   cfg.app.tableSigningKey,
         monitor:      monitor.prefix('table.roles'),
       }),
+  },
+
+  Roles: {
+    requires: ['cfg'],
+    setup: async ({cfg}) => {
+      let Roles = new containers.Roles({
+        credentials:  cfg.azure || {},
+        containerName: cfg.app.rolesContainerName,
+      });
+      await Roles.setup();
+      return Roles;
+    },
   },
 
   validator: {
