@@ -5,6 +5,7 @@ var events      = require('events');
 var debug       = require('debug')('auth:ScopeResolver');
 var Promise     = require('promise');
 var dfa         = require('./dfa');
+var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 
 class ScopeResolver extends events.EventEmitter {
   /** Create ScopeResolver */
@@ -255,13 +256,14 @@ class ScopeResolver extends events.EventEmitter {
    */
 
   resolve(scopes) {
-    // use mergeScopeSets to eliminate any redundant scopes in the input (which will
-    // cause redundant scopes in the output)
-    let granted = dfa.mergeScopeSets(dfa.sortScopesForMerge(_.clone(scopes)), []);
+    // normalize to remove any duplicates
+    scopes = _.clone(scopes);
+    scopes.sort(scopeCompare);
+    let granted = normalizeScopeSet(scopes);
     for (let scope of scopes) {
       let found = this._resolver(scope);
       if (found.length > 0) {
-        granted = dfa.mergeScopeSets(granted, found);
+        granted = mergeScopeSets(granted, found);
       }
     }
     return granted;

@@ -1,189 +1,10 @@
 suite('DFA', () => {
   let ScopeResolver = require('../src/scoperesolver');
   let dfa = require('../src/dfa');
+  let {mergeScopeSets, scopeCompare} = require('taskcluster-lib-scopes');
   let assert = require('assert');
   let _ = require('lodash');
   let fs = require('fs');
-
-  suite('role sorting', function() {
-    let testSortRoles = ({title, roleIds, sorted}) => {
-      title = title || 'sortRolesForDFAGeneration(' + roleIds.join(',') + ')';
-      test(title, () => {
-        _.range(500).forEach(() => {
-          let roles = roleIds.map(i => {return {roleId: i};});
-          roles = dfa.sortRolesForDFAGeneration(roles).map(r => r.roleId);
-          if (!_.isEqual(roles, sorted)) {
-            console.log('Got: ');
-            console.log(roles);
-            console.log('Expected: ');
-            console.log(sorted);
-            assert(false, 'Not sorted correctly');
-          }
-          // shuffle roleIds for next round
-          roleIds = _.shuffle(roleIds);
-        });
-      });
-    };
-
-    testSortRoles({
-      roleIds: [
-        'test-12',
-        'test-2',
-        'test-11',
-        'test-1',
-        'test-1*',
-        'test-13',
-        'test-3',
-        'test-10',
-        'test-*',
-      ],
-      sorted: [
-        'test-*',
-        'test-1*',
-        'test-1',
-        'test-10',
-        'test-11',
-        'test-12',
-        'test-13',
-        'test-2',
-        'test-3',
-      ],
-    });
-
-    testSortRoles({
-      roleIds: [
-        'test*a',
-        'test*b',
-        'test*',
-        'test',
-        'testb',
-      ],
-      sorted: [
-        'test*',
-        'test',
-        'test*a',
-        'test*b',
-        'testb',
-      ],
-    });
-
-    testSortRoles({
-      roleIds: ['(', '*', ''],
-      sorted: ['*', '', '('],
-    });
-
-    testSortRoles({
-      roleIds: ['ab(', 'ab*', 'aa'],
-      sorted: ['aa', 'ab*', 'ab('],
-    });
-
-    const sortedRoleIds = [
-      '*', 'a*', 'a', 'aa', 'aaa', 'aab', 'ab', 'abb*', 'abb', 'abbc', 'ca',
-      'caa', 'cab*', 'cab', 'cc*',
-    ];
-    testSortRoles({
-      title:  'big list',
-      roleIds:  _.shuffle(sortedRoleIds),
-      sorted: sortedRoleIds,
-    });
-  });
-
-  suite('scopeset merging', function() {
-    let testMergeScopeSets = (title, {scopesA, scopesB, expected}) => {
-      test('mergeScopeSets (' + title + ')', () => {
-        _.range(500).forEach(() => {
-          let results = dfa.mergeScopeSets(
-            dfa.sortScopesForMerge(scopesA),
-            dfa.sortScopesForMerge(scopesB)
-          );
-          if (!_.isEqual(results, expected)) {
-            console.log('expected:');
-            console.log(expected);
-            console.log('got:');
-            console.log(results);
-            assert(false, 'Expected different result!');
-          }
-          // Shuffle for next round
-          scopesA = _.shuffle(scopesA);
-          scopesB = _.shuffle(scopesB);
-        });
-      });
-    };
-
-    testMergeScopeSets('simple sort', {
-      scopesA: ['a', 'b', 'c'],
-      scopesB: [],
-      expected: ['a', 'b', 'c'],
-    });
-
-    testMergeScopeSets('simple sort w. star', {
-      scopesA: ['a*', 'b', 'c'],
-      scopesB: [],
-      expected: ['a*', 'b', 'c'],
-    });
-
-    testMergeScopeSets('complex sort', {
-      scopesA: [
-        'assume:tr-0',
-        'assume:tr-1',
-        'assume:tr-10',
-        'assume:tr-2',
-        'assume:tr-3',
-        'assume:tr-4',
-        'assume:tr-5',
-        'assume:tr-6',
-        'assume:tr-7',
-        'assume:tr-8',
-        'assume:tr-9',
-        'special-scope',
-      ],
-      scopesB: [],
-      expected: [
-        'assume:tr-0',
-        'assume:tr-1',
-        'assume:tr-10',
-        'assume:tr-2',
-        'assume:tr-3',
-        'assume:tr-4',
-        'assume:tr-5',
-        'assume:tr-6',
-        'assume:tr-7',
-        'assume:tr-8',
-        'assume:tr-9',
-        'special-scope',
-      ],
-    });
-
-    testMergeScopeSets('can normalize', {
-      scopesA: ['b*', 'ab', 'aa', 'a', 'a*'],
-      scopesB: [],
-      expected: ['a*', 'b*'],
-    });
-
-    testMergeScopeSets('can normalize', {
-      scopesA: ['b*', 'ab', 'aa', 'a*'],
-      scopesB: [],
-      expected: ['a*', 'b*'],
-    });
-
-    testMergeScopeSets('sanity check (1)', {
-      scopesA: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
-      scopesB: [],
-      expected: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
-    });
-
-    testMergeScopeSets('sanity check (2)', {
-      scopesA: [],
-      scopesB: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
-      expected: ['assume:tr-10', 'assume:tr-9', 'special-scope'],
-    });
-
-    testMergeScopeSets('can normalize two', {
-      scopesA: ['b*', 'ab', 'aa', 'a*', 'c', 'ca', 'da*'],
-      scopesB: ['b*', 'ab', 'aa', 'a*', 'abc', 'ab*', 'ca', 'daa'],
-      expected: ['a*', 'b*', 'c', 'ca', 'da*'],
-    });
-  });
 
   suite('buildResolver', function() {
     let testBuildResolver = (title, {
@@ -225,7 +46,8 @@ suite('DFA', () => {
           let results = resolveSet(resolver(scope));
 
           if (dump) {
-            let rs = dfa.sortRolesForDFAGeneration(_.cloneDeep(roles));
+            let rs = _.cloneDeep(roles);
+            rs.sort((a, b) => scopeCompare(a.roleId, b.roleId));
             let sets = [[]];
             let state = dfa.generateDFA(rs, 0, rs.length, 0, sets, 0);
 
@@ -757,7 +579,7 @@ suite('DFA', () => {
       const res = dfa.computeFixedPoint(roles);
       return scopes => {
         scopes.sort(dfa.scopeCompare);
-        return _.reduce(scopes.map(res), (a, b) => dfa.mergeScopeSets(a, b), scopes);
+        return _.reduce(scopes.map(res), (a, b) => mergeScopeSets(a, b), scopes);
       };
     };
 

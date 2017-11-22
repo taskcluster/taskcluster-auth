@@ -1,214 +1,5 @@
-var _           = require('lodash');
-var assert      = require('assert');
-var Promise     = require('promise');
-var ScopeResolver = require('./scoperesolver');
-
-/**
- * Compare scopes a and b to see which comes first if sorted
- * Such that 'a*' comes before 'a', but otherwise normal order.
- *
- * Example: ['*', '', 'a*', 'a', 'a(', 'aa', 'b'] is a list sorted as such.
- *
- * The reasoning for this sorting is pretty simple. If we have a set of scopes:
- *   ['a', 'a*', 'ab', 'b']
- * We wish to normalize the scope sets while merging, such that we don't have
- * duplicates and redundant scopes. If we sort the set of scopes above we get:
- *   ['a*', 'a', 'ab', 'b']
- * Now if we wish to construct the normalized scope-set, we just takes the
- * scopes out of the list one by one in the sorted order. And if the last scope
- * added the to normalized result list doesn't satisfy the current scope, the
- * current scope is added to the result list.
- *
- * Formally, we say that a scope-set S is normalized if there is not two scopes
- * a, b in S such that a satisfies b.
- *
- * On the above list, normalization would look like this:
- *   R = []                       // Normalized result list
- *   S = ['a*', 'a', 'ab', 'b']   // Sorted input list
- *   L = null                     // Last normalized scope
- * Step 1:
- *   'a*' = S[0]
- *   does L satisfy 'a*', answer: NO
- *   R.push('a*')
- *   L = 'a*'
- * Step 2:
- *   'a' = S[1]
- *   does L satisfy 'a', answer: YES (L = 'a*')
- *   Then we skip 'a'
- * Step 3:
- *   'ab' = S[2]
- *   does L satisfy 'ab', answer: YES (L = 'a*')
- *   Then we skip 'ab'
- * Step 4:
- *   'b' = S[3]
- *   does L satisfy 'b', answer: NO (L = 'a*')
- *   R.push('b')
- *   L = 'b'
- * Done:
- *   R, satisfies all the scopes in S, but it's smaller, and doesn't have any
- *   duplicates, or scopes that satisfies other scopes.
- *
- * We perform normalization in the process of merging scope sets; see below.
- */
-let scopeCompare = (a, b) => {
-  let n = a.length;
-  let m = b.length;
-
-  let d = Math.abs(n - m);
-  if (d == 0) {
-    if (a[n - 1] === '*' || b[n - 1] === '*') {
-      if (a.startsWith(b.slice(0, -1))) {
-        if (a[n - 1] === '*') {
-          return -1;
-        }
-        if (b[n - 1] === '*') {
-          return 1;
-        }
-      }
-    }
-  } else if (d == 1) {
-    if (n > m && a[n - 1] === '*') {
-      if (a.startsWith(b)) {
-        return -1;
-      }
-    }
-    if (m > n && b[m - 1] === '*') {
-      if (b.startsWith(a)) {
-        return 1;
-      }
-    }
-  }
-
-  return a < b ? -1 : 1;
-};
-
-/** Assumes scopes to be unique, and sorts scopes for use with mergeScopeSets */
-let sortScopesForMerge = (scopes) => {
-  return scopes.sort(scopeCompare);
-};
-
-// Export sortScopesForMerge
-exports.sortScopesForMerge = sortScopesForMerge;
-
-/**
- * Take two sets of sorted scopes and merge them, normalizing in the process.
- * Normalizing means removing duplicates, as well as scopes implied by a
- * star-scopes.
- *
- * This method returns a new array, and leaves both arguments untouched.
- * Hence, you should not clone arrays prior to calling this method.
- *
- * Returns a set of normalized scopes. See scopeCompare for formal definition
- * for normalized scope-set.
- */
-let mergeScopeSets = (scopes1, scopes2) => {
-  // This is dead simple, we track the length with n and m
-  let n = scopes1.length;
-  let m = scopes2.length;
-  // And we track the current offset in the scopes1 and scopes2 using
-  // i and j respectfully. This ensure that we don't have modify the arguments.
-  let i = 0;
-  let j = 0;
-  let scopes = [];
-  while (i < n && j < m) {
-    // Take a scope for each list
-    let s1 = scopes1[i];
-    let s2 = scopes2[j];
-    let scope = null;
-    if (s1 === s2) {
-      // If the two scopes are exactly the same, then we add one of them
-      // and we increment both i and j by one.
-      scopes.push(s1);
-      scope = s1;
-      i += 1;
-      j += 1;
-    } else {
-      // If the scopes are different, we compare them using the function used
-      // for the sort order and choose the one that comes first.
-      let z = scopeCompare(s1, s2);
-      if (z < 0) {
-        scope = s1;
-        scopes.push(s1);
-        i += 1;
-      } else {
-        scope = s2;
-        scopes.push(s2);
-        j += 1;
-      }
-    }
-    // If we just added a star scope, we have to skip everything that
-    // is satisfied by the star scope.
-    if (scope.endsWith('*')) {
-      let prefix = scope.slice(0, -1);
-      while (i < n && scopes1[i].startsWith(prefix)) {
-        i += 1;
-      }
-      while (j < m && scopes2[j].startsWith(prefix)) {
-        j += 1;
-      }
-    }
-  }
-  // At this stage i = n or j = m, meaning that one of our two lists is now
-  // empty, so we just add everything from one of them. But to ensure
-  // normalization, we still do the endsWith('*') trick, skipping scopes that
-  // are already satisfied.
-  while (i < n) {
-    let scope = scopes1[i];
-    scopes.push(scope);
-    i += 1;
-    if (scope.endsWith('*')) {
-      let prefix = scope.slice(0, -1);
-      while (i < n && scopes1[i].startsWith(prefix)) {
-        i += 1;
-      }
-    }
-  }
-  while (j < m) {
-    let scope = scopes2[j];
-    scopes.push(scope);
-    j += 1;
-    if (scope.endsWith('*')) {
-      let prefix = scope.slice(0, -1);
-      while (j < m && scopes2[j].startsWith(prefix)) {
-        j += 1;
-      }
-    }
-  }
-  return scopes;
-};
-
-// Export mergeScopeSets
-exports.mergeScopeSets = mergeScopeSets;
-
-/**
- * Sort roles by roleId, such that 'a', comes right after 'a*'
- *
- * Example: ['', 'a*', 'a', 'a(', 'aa', 'b'] is a list sorted as such.
- *
- * We do this such that we get a list looking a but like this:
- *  1. client-id:a
- *  3. client-id:try*
- *  2. client-id:try
- *  4. client-id:try-more
- *  5. client-id:z
- *
- * The cool thing is that when generating a DFA for this list all the possible
- * candidates (1-5) have the same path until we reach the 11th character.
- * At the 11th character the string diverge and any DFA constructed must
- * naturally have more than one state. However, for 11th character our DFA still
- * only needs 3 states, one representing (1), (2-4) and (5). But sorting the
- * list of roles, we represent these subsets elegantly and efficiently using
- * array offsets in the list of roles.
- *
- * More details on this later, for now just know that it makes DFA construct
- * both efficient and elegant (not to mention easy).
- */
-let sortRolesForDFAGeneration = (roles) => {
-  return roles.sort((a, b) => scopeCompare(a.roleId, b.roleId));
-};
-
-// Export sortRolesForDFAGeneration
-exports.sortRolesForDFAGeneration = sortRolesForDFAGeneration;
+const _ = require('lodash');
+const {scopeCompare, mergeScopeSets} = require('taskcluster-lib-scopes');
 
 /**
  * Build a DFA of states of the form:
@@ -451,7 +242,7 @@ let executeDFA = (state, scope, depth = 0) => {
  */
 let buildResolver = (roles) => {
   // Generate DFA
-  roles = sortRolesForDFAGeneration(roles);
+  roles.sort((a, b) => scopeCompare(a.roleId, b.roleId));
   let sets = [[]];
   let dfa = generateDFA(roles, 0, roles.length, 0, sets, 0);
 
@@ -495,7 +286,7 @@ let computeFixedPoint = (roles) => {
   // Add initial value for expandedScopes for each role R and sort roles
   for (let R of roles) {
     R.expandedScopes = null;
-    R.scopes = sortScopesForMerge(R.scopes);
+    R.scopes.sort(scopeCompare);
     R.impliedRoles = []; // roles that R can directly assume
     R.seen = 0; // later iteration this role was seen (used later)
   }
@@ -571,7 +362,6 @@ let computeFixedPoint = (roles) => {
     //      merge multiple sets at the same time.
     sets[i].map(r => {
       if (typeof r === 'number') {
-        assert(r < i, 'What!!!');
         return scopeSets[r]; // we know that r < i, hence, this works
       }
       return r.expandedScopes;
