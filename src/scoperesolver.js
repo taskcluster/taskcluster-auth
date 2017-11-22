@@ -312,47 +312,6 @@ class ScopeResolver extends events.EventEmitter {
       });
     });
   }
-
-  /**
-   * Determine if scope grants a roleId, and allows owner to assume the role.
-   * This is equivalent to: `scopeMatch([["assume:" + roleId]], scopes)`
-   */
-  static grantsRole(scope, roleId) {
-    // We have 3 rules (A), (B) and (C) by which a scope may match a role.
-    // This implementation focuses on being reasonably fast by avoiding
-    // allocations whenever possible.
-
-    // Rule (A) and (B) both requires the scope to start with "assume:"
-    if (scope.startsWith('assume:')) {
-      // A) We have scope = 'assume:<roleId>', so we can assume the role
-      if (scope.length === roleId.length + 7 && scope.endsWith(roleId)) {
-        return true;
-      }
-
-      // B) role is on the form 'assume:<prefix>*' and we have a scope on the
-      //    form 'assume:<prefix>...'. This is special rule, assigning
-      //    special meaning to '*' when used at the end of a roleId.
-      if (roleId.endsWith('*') && scope.slice(7).startsWith(roleId.slice(0, -1))) {
-        return true;
-      }
-
-      // C) We have scope as 'assume:<prefix>*' and '<prefix>' is a prefix of
-      // roleId, this is similar to rule (A) relying on the normal scope
-      // satisfiability. Note, this is only half of role (C).
-      if (scope.endsWith('*') && roleId.startsWith(scope.slice(7, -1))) {
-        return true;
-      }
-    }
-
-    // C) We have scope as '<prefix>*' and '<prefix>' is a prefix of 'assume',
-    // then similar to rule (A) relying on the normal scope satisfiability we
-    // have that any role is granted.
-    if (scope.endsWith('*') && 'assume'.startsWith(scope.slice(0, -1))) {
-      return true;
-    }
-
-    return false;
-  }
 }
 
 // Export ScopeResolver
