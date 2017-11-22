@@ -9,6 +9,14 @@ suite('api (client)', function() {
   var testing     = require('taskcluster-lib-testing');
   var taskcluster = require('taskcluster-client');
 
+  const cleanup = async () => {
+    // Delete all clients and roles
+    await helper.Client.scan({}, {handler: c => c.clientId === 'root' ? null : c.remove()});
+    await helper.Role.scan({}, {handler: r => r.remove()});
+  };
+  setup(cleanup);
+  teardown(cleanup);
+
   test('ping', async () => {
     await helper.auth.ping();
   });
@@ -18,6 +26,7 @@ suite('api (client)', function() {
   });
 
   test('auth.client (no credentials)', async () => {
+    await helper.auth.client('root');
     await (new helper.Auth()).client('root');
   });
   const CLIENT_ID = 'nobody/sds:ad_asd/df-sAdSfchsdfsdfs';
@@ -117,8 +126,6 @@ suite('api (client)', function() {
   });
 
   test('auth.createClient (with scopes)', async () => {
-    await helper.auth.deleteClient(CLIENT_ID);
-
     await helper.events.listenFor('e1', helper.authEvents.clientCreated({
       clientId:  CLIENT_ID,
     }));
@@ -152,7 +159,24 @@ suite('api (client)', function() {
     await helper.events.waitFor('e1');
   });
 
+  const createTestClient = async () => {
+    await helper.events.listenFor('created', helper.authEvents.clientCreated({
+      clientId:  CLIENT_ID,
+    }));
+
+    var expires = taskcluster.fromNow('1 hour');
+    var description = 'Test client...';
+    var scopes = ['scope1', 'myapi:*'];
+    let client = await helper.auth.createClient(CLIENT_ID, {
+      expires, description, scopes,
+    });
+
+    await helper.events.waitFor('created');
+  };
+
   test('auth.resetAccessToken', async () => {
+    await createTestClient();
+
     await helper.events.listenFor('e1', helper.authEvents.clientUpdated({
       clientId:  CLIENT_ID,
     }));
@@ -169,6 +193,8 @@ suite('api (client)', function() {
   });
 
   test('use client', async () => {
+    await createTestClient();
+
     // Fetch client
     let r1 = await helper.auth.client(CLIENT_ID);
 
@@ -207,6 +233,8 @@ suite('api (client)', function() {
   });
 
   test('auth.updateClient (no scope changes)', async () => {
+    await createTestClient();
+
     await helper.events.listenFor('e1', helper.authEvents.clientUpdated({
       clientId:  CLIENT_ID,
     }));
@@ -237,6 +265,8 @@ suite('api (client)', function() {
   });
 
   test('auth.updateClient (with scope changes)', async () => {
+    await createTestClient();
+
     await helper.events.listenFor('e1', helper.authEvents.clientUpdated({
       clientId:  CLIENT_ID,
     }));
@@ -273,17 +303,17 @@ suite('api (client)', function() {
     assume(client2.expandedScopes).contains('scope3');
   });
 
-  test('auth.disableClient', async () => {
+  test('auth.disableClient / enableClient', async () => {
+    await createTestClient();
+
     let client = await helper.auth.disableClient(CLIENT_ID);
     assume(client.disabled).equals(true);
     client = await helper.auth.client(CLIENT_ID);
     assume(client.disabled).equals(true);
     client = await helper.auth.disableClient(CLIENT_ID);
     assume(client.disabled).equals(true);
-  });
 
-  test('auth.enableClient', async () => {
-    let client = await helper.auth.enableClient(CLIENT_ID);
+    client = await helper.auth.enableClient(CLIENT_ID);
     assume(client.disabled).equals(false);
     client = await helper.auth.client(CLIENT_ID);
     assume(client.disabled).equals(false);
@@ -292,6 +322,8 @@ suite('api (client)', function() {
   });
 
   test('auth.deleteClient', async () => {
+    await createTestClient();
+
     await helper.events.listenFor('e1', helper.authEvents.clientDeleted({
       clientId:  CLIENT_ID,
     }));
@@ -326,9 +358,6 @@ suite('api (client)', function() {
   });
 
   test('auth.expandScopes with expanding scopes', async () => {
-    await helper.auth.deleteRole('myrole:a');
-    await helper.auth.deleteRole('myrole:b');
-
     await helper.events.listenFor('role-a', helper.authEvents.roleCreated({
       roleId:  'myrole:a',
     }));
@@ -358,9 +387,6 @@ suite('api (client)', function() {
       'myapi:b:a',
       'myapi:c',
     ]});
-
-    await helper.auth.deleteRole('myrole:a');
-    await helper.auth.deleteRole('myrole:b');
   });
 
   test('auth.currentScopes with root credentials', async () => {
