@@ -1,9 +1,6 @@
 suite('api (role logic)', function() {
   var Promise     = require('promise');
-  var assert      = require('assert');
-  var debug       = require('debug')('test:roles');
   var helper      = require('./helper');
-  var slugid      = require('slugid');
   var _           = require('lodash');
   var assume      = require('assume');
   var taskcluster = require('taskcluster-client');
