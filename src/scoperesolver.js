@@ -250,40 +250,78 @@ class ScopeResolver extends events.EventEmitter {
     let dfa = generateTrie(rules);
 
     return (inputs) => {
-      let scopes = inputs;
-      let seen = new Set();
-      let i = 0;
-      while (i < scopes.length) {
-        let scope = scopes[i++];
-        // if this scope is not going to expand, ignore it
-        if (!ASSUME_PREFIX.test(scope)) {
-          continue;
-        }
-        // if we have seen this scope, ignore it
-        if (seen.has(scope)) {
-          continue;
-        }
-        seen.add(scope);
+      inputs.sort(scopeCompare);
+      // seen is the normalied scopeset we have seen already
+      let seen = normalizeScopeSet(inputs);
+      // queue is the list of scopes to expand (so only expandable scopes)
+      let queue = seen.filter(s => ASSUME_PREFIX.test(s));
 
-        // eecute the DFA and expand any parameterizations in the result, then add
+      // insert a new scope into the `seen` scopeset, returning false if it was
+      // already satisfied by the scopeset.  This is equivalent to `seen =
+      // mergeScopeSets(seen, [scope])`, then returning false if seen is not
+      // changed.
+      let see = (scope) => {
+        const n = seen.length;
+        const trailingStar = scope.endsWith('*');
+        const prefix = scope.slice(0, -1);
+        let i = 0;
+        while (i < n) {
+          let seenScope = seen[i];
+          // if seenScope satisfies scope, we're done
+          if (scope === seenScope || seenScope.endsWith('*') && scope.startsWith(seenScope.slice(0, -1))) {
+            return false;
+          }
+
+          // if we've found where to insert this scope, do so and splice out any existing scopes
+          // that this one satisfies
+          if (scopeCompare(seenScope, scope) > 0) {
+            let j = i;
+            if (trailingStar) {
+              while (j < n && seen[j].startsWith(prefix)) {
+                j++;
+              }
+            }
+            seen.splice(i, j - i, scope);
+            return true;
+          }
+
+          i++;
+        }
+
+        // we fell off the end of `seen`, so add this new scope at the end
+        seen.push(scope);
+        return true;
+      };
+
+      let i = 0;
+      while (i < queue.length) {
+        let scope = queue[i++];
+
+        // execute the DFA and expand any parameterizations in the result, then add
         // the newly expanded scopes to the list of scopes to expand (recursively)
         const trailingStar = scope.endsWith('*');
         executeTrie(dfa, scope).forEach((expansion, k) => {
           if (!expansion) {
             return;
           }
+
           // Get the replacement slice for any parameterization. If this is empty and the
           // scope ended with `*`, consider that `*` to have been extended into the
           // replacement.
           const slice = scope.slice(k) || (trailingStar ? '*' : '');
           const parameter_regexp = trailingStar ? PARAMETER_TO_END : PARAMETER_G;
-          scopes = scopes.concat(expansion.map(s => s.replace(parameter_regexp, slice)));
+
+          expansion.map(s => s.replace(parameter_regexp, slice)).forEach(s => {
+            // mark this scope as seen, and if it is novel and expandable, add it
+            // to the queue for expansion
+            if (see(s) && ASSUME_PREFIX.test(s)) {
+              queue.push(s);
+            }
+          });
         });
       }
 
-      // normalize the resulting set of scopes
-      scopes.sort(scopeCompare);
-      return normalizeScopeSet(scopes);
+      return seen;
     };
   };
 

@@ -268,6 +268,15 @@ suite('scoperesolver', () => {
       expected: ['assume:a*b*', 'ASTARB', 'ASTARBC', 'ASTAR'],
     });
 
+    testResolver('eventually resolve to *', {
+      roles: [
+        {roleId: 'test', scopes:['assume:*']},
+        {roleId: 'star', scopes:['*']},
+      ],
+      scopes: ['assume:test'],
+      expected: ['*'],
+    });
+
     testResolver('basic parameterized role', {
       roles: [
         {roleId: 'a*', scopes:['A<..>']},
