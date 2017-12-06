@@ -255,6 +255,38 @@ let load = Loader({
       await Client.purgeExpired(now);
     },
   },
+
+  rolesToBlob: {
+    requires: ['cfg', 'Role', 'Roles'],
+    setup: async ({cfg, Role, Roles}) => {
+      let blob = [];
+      await Role.scan({}, {
+        handler: r => {
+          blob.push({
+            roleId: r.roleId,
+            scopes: r.scopes,
+            description: r.description,
+            lastModified: r.details.lastModified,
+            created: r.details.created,
+          });
+        },
+      });
+
+      await Roles.modify(roles => {
+        // clear and replace
+        roles.splice(0);
+        blob.forEach(r => roles.push(r));
+      });
+    },
+  },
+
+  dumpBlob: {
+    requires: ['cfg', 'Roles'],
+    setup: async ({cfg, Roles}) => {
+      let roles = await Roles.get();
+      console.log(JSON.stringify(roles, null, 2));
+    },
+  },
 }, ['profile', 'process']);
 
 // If this file is executed launch component from first argument
