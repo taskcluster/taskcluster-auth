@@ -3,7 +3,6 @@ var assert      = require('assert');
 var taskcluster = require('taskcluster-client');
 var events      = require('events');
 var debug       = require('debug')('auth:ScopeResolver');
-var Promise     = require('promise');
 var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 var {generateTrie, executeTrie} = require('./trie');
 
@@ -173,7 +172,9 @@ class ScopeResolver extends events.EventEmitter {
   }
 
   reload() {
+    console.log('reload()');
     return this._syncReload(async () => {
+      console.log('reload() inner');
       debug('Loading clients and roles');
 
       // Load clients and roles in parallel
@@ -200,9 +201,10 @@ class ScopeResolver extends events.EventEmitter {
             });
           },
         }),
-        async () => {
+        (async () => {
           roles = await this._Roles.get();
-        },
+          console.log(`this._Roles.get got ${roles.length} roles`);
+        })(),
       ]);
 
       // Set _roles and _clients at the same time and immediately call
@@ -213,6 +215,7 @@ class ScopeResolver extends events.EventEmitter {
 
   /** Compute fixed point over this._roles, and construct _clientCache */
   _rebuildResolver(roles, clients) {
+    console.log(`_rebuildResolver(roles (${roles.length}), clients (${clients.length}))`);
     this._resolver = this.buildResolver(roles);
 
     // set this._roles, this._clients only after the resolver is successfully
@@ -316,7 +319,9 @@ class ScopeResolver extends events.EventEmitter {
     // the `*`)
 
     let rules = roles.map(({roleId, scopes}) => ({pattern: `assume:${roleId}`, scopes}));
+    console.log(`rebuild resolver with ${rules.length} rules`);
     let dfa = generateTrie(rules);
+    console.log(dfa);
 
     return (inputs) => {
       inputs.sort(scopeCompare);
@@ -369,6 +374,7 @@ class ScopeResolver extends events.EventEmitter {
         // execute the DFA and expand any parameterizations in the result, then add
         // the newly expanded scopes to the list of scopes to expand (recursively)
         const trailingStar = scope.endsWith('*');
+        console.log(`executeTrie(dfa, ${JSON.stringify(scope)})`);
         executeTrie(dfa, scope).forEach((expansion, k) => {
           if (!expansion) {
             return;
