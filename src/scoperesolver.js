@@ -3,7 +3,6 @@ var assert      = require('assert');
 var taskcluster = require('taskcluster-client');
 var events      = require('events');
 var debug       = require('debug')('auth:ScopeResolver');
-var Promise     = require('promise');
 var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 var {generateTrie, executeTrie} = require('./trie');
 
@@ -200,9 +199,9 @@ class ScopeResolver extends events.EventEmitter {
             });
           },
         }),
-        async () => {
+        (async () => {
           roles = await this._Roles.get();
-        },
+        })(),
       ]);
 
       // Set _roles and _clients at the same time and immediately call
