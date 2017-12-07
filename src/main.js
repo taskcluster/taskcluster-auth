@@ -5,6 +5,7 @@ let Monitor            = require('taskcluster-lib-monitor');
 let App                = require('taskcluster-lib-app');
 let Config             = require('typed-env-config');
 let data               = require('./data');
+let containers         = require('./containers');
 let v1                 = require('./v1');
 let path               = require('path');
 let debug              = require('debug')('server');
@@ -91,6 +92,18 @@ let load = Loader({
       }),
   },
 
+  Roles: {
+    requires: ['cfg'],
+    setup: async ({cfg}) => {
+      let Roles = new containers.Roles({
+        credentials:  cfg.azure || {},
+        containerName: cfg.app.rolesContainerName,
+      });
+      await Roles.setup();
+      return Roles;
+    },
+  },
+
   validator: {
     requires: ['cfg'],
     setup: ({cfg}) => Validate({
@@ -139,14 +152,13 @@ let load = Loader({
 
   api: {
     requires: [
-      'cfg', 'Client', 'Role', 'validator', 'publisher', 'resolver',
+      'cfg', 'Client', 'Roles', 'validator', 'publisher', 'resolver',
       'sentryManager', 'monitor',
     ],
     setup: async ({
-      cfg, Client, Role, validator, publisher, resolver, sentryManager, monitor,
+      cfg, Client, Roles, validator, publisher, resolver, sentryManager, monitor,
     }) => {
       // Set up the Azure tables
-      await Role.ensureTable();
       await Client.ensureTable();
 
       // set up the root access token if necessary
@@ -156,7 +168,7 @@ let load = Loader({
 
       // Load everything for resolver
       await resolver.setup({
-        Client, Role,
+        Client, Roles,
         exchangeReference: exchanges.reference({
           credentials:      cfg.pulse,
           exchangePrefix:   cfg.app.exchangePrefix,
@@ -172,7 +184,7 @@ let load = Loader({
 
       return v1.setup({
         context: {
-          Client, Role,
+          Client, Roles,
           publisher,
           resolver,
           sts:                new AWS.STS(cfg.aws),
@@ -240,6 +252,38 @@ let load = Loader({
         process.exit(1);
       }
       await Client.purgeExpired(now);
+    },
+  },
+
+  rolesToBlob: {
+    requires: ['cfg', 'Role', 'Roles'],
+    setup: async ({cfg, Role, Roles}) => {
+      let blob = [];
+      await Role.scan({}, {
+        handler: r => {
+          blob.push({
+            roleId: r.roleId,
+            scopes: r.scopes,
+            description: r.description,
+            lastModified: r.details.lastModified,
+            created: r.details.created,
+          });
+        },
+      });
+
+      await Roles.modify(roles => {
+        // clear and replace
+        roles.splice(0);
+        blob.forEach(r => roles.push(r));
+      });
+    },
+  },
+
+  dumpBlob: {
+    requires: ['cfg', 'Roles'],
+    setup: async ({cfg, Roles}) => {
+      let roles = await Roles.get();
+      console.log(JSON.stringify(roles, null, 2));
     },
   },
 }, ['profile', 'process']);
