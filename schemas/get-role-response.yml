@@ -18,7 +18,7 @@ properties:
       description: |
         Scope the role grants access to
       type:                 string
-      pattern:              "^[\x20-\x7e]*$"
+      pattern:              "^[\\x20-\\x7e]*$"
   description:
     description: |
       Description of what this role is used for in markdown.
@@ -46,7 +46,7 @@ properties:
       description: |
         Scope this role grants
       type:                 string
-      pattern:              "^[\x20-\x7e]*$"
+      pattern:              "^[\\x20-\\x7e]*$"
 additionalProperties:       false
 required:
   - roleId
