@@ -51,7 +51,7 @@ let load = Loader({
 
         },
         sentryDSN: async (project) => {
-          let key = await this.sentryManager.projectDSN(project);
+          let key = await sentryManager.projectDSN(project);
           return {
             project,
             dsn: _.pick(key.dsn, ['secret', 'public']),
