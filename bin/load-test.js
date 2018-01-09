@@ -1,5 +1,5 @@
 var debug         = require('debug')('queue:bin:load-test');
-var base          = require('taskcluster-base');
+var Config        = require('typed-env-config');
 var Promise       = require('promise');
 var _             = require('lodash');
 var v1            = require('../src/v1');
@@ -10,28 +10,36 @@ var taskcluster   = require('taskcluster-client');
 var assert        = require('assert');
 
 // run with:
-// heroku run -s performance-m --app tc-auth-load-test babel-node bin/load-test.js load-test
+// heroku run -s performance-m --app tc-auth-load-test node bin/load-test.js load-test
+
+let sleep = (delay) => new Promise(resolve => setTimeout(resolve, delay));
 
 /** Launch server */
 var launch = async function(profile) {
   debug("Launching with profile: %s", profile);
 
   // Load configuration
-  var cfg = base.config({profile: 'load-test'});
+  var cfg = Config({profile: 'load-test'});
 
   var fmt = (n) => {
     return Math.round(n * 100) / 100;
   };
 
-  const CYCLE_SECONDS = 3 * 60;
+  const CYCLE_SECONDS = 1 * 60;
 
   var success = 0;
   var failed  = 0;
+  var hgram   = _.range(10).map(() => 0);
+  var hgram_max = 1000;
   var summary = () => {
     console.log("SUMMARY: %s req/s success: %s, failed: %s",
                 fmt(success / CYCLE_SECONDS), success, failed)
+    console.log("HGRAM: " + hgram.filter(v => v !== 0).map((val, index) => {
+      return `${_.floor(hgram_max / hgram.length) * index} ms: ${val}`
+    }).join(' | '));
     success = 0;
     failed  = 0;
+    hgram = hgram.map(() => 0)
   };
 
   /*
@@ -124,6 +132,7 @@ var launch = async function(profile) {
         reqForVerification = makeSignature();
       }, 3 * 60 * 1000);
       while(true) {
+        let start = Date.now();
         await auth.authenticateHawk(reqForVerification).then(result => {
           assert(result.status === 'auth-success', "Validation error");
           success += 1;
@@ -133,11 +142,14 @@ var launch = async function(profile) {
             console.log("Error: %s: %s", err.statusCode, err.message);
           }
         });
+        let index = _.floor((Date.now() - start) / (hgram_max / hgram.length));
+        index = Math.min(Math.max(index, 0), hgram.length - 1);
+        hgram[index] += 1;
 
         if (exiting) {
           break;
         }
-        await base.testing.sleep(10);
+        await sleep(10);
       }
     })().catch(function(err) {
       console.log("LOOP CRASHED!!!");
@@ -149,45 +161,45 @@ var launch = async function(profile) {
   /*
   //  2 req in parallel
   while(loops < 2) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
 
 
   //  4 req in parallel
   while(loops < 4) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
   // */
   //  8 req in parallel
   while(loops < 8) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
 
 
   // 16 req in parallel
   while(loops < 16) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
 
   // 32 req in parallel
   while(loops < 32) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
 
   // 48 req in parallel
   while(loops < 48) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
   //
 
   // 64 req in parallel
   while(loops < 64) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
 
   // 128 req in parallel
   while(loops < 128) startLoop();
-  await base.testing.sleep(CYCLE_SECONDS * 1000);
+  await sleep(CYCLE_SECONDS * 1000);
   summary();
   //*/
   console.log("Exiting");
@@ -214,8 +226,3 @@ if (!module.parent) {
 
 // Export launch in-case anybody cares
 module.exports = launch;
-
-
-
-
-
