@@ -584,7 +584,7 @@ api.declare({
   input.scopes.sort(scopeCompare);
 
   let when = new Date().toJSON();
-  role = {
+  let role = {
     roleId,
     description: input.description,
     scopes: input.scopes,

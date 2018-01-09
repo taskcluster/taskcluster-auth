@@ -2,3 +2,4 @@
 --timeout 30s
 --reporter spec
 --exit
+--require source-map-support/register

@@ -1,4 +1,4 @@
-const containers = require('../src/containers');
+const containers = require('../lib/containers');
 const uuid = require('uuid');
 const assert = require('assert');
 const helper = require('./helper');
@@ -71,7 +71,7 @@ suite('containers', function() {
 
   test('create a second DataContainer', async function() {
     // this verifies that creating a container doesn't erase the roles!
-    roles2 = new containers.Roles({
+    let roles2 = new containers.Roles({
       containerName,
       credentials,
     });
