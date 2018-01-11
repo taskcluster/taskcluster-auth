@@ -352,8 +352,8 @@ suite('scoperesolver', () => {
           timings.push(timing);
 
           const MIN_ITERATIONS = 5; // during warmup only
-          const PREHEAT_TIME = 500 * 1000000 // ns
-          const TIMEING_TIME = 3 * 1000000000 // ns
+          const PREHEAT_TIME = 500 * 1000000; // ns
+          const TIMEING_TIME = 3 * 1000000000; // ns
           time = (step, fn) => {
             let result;
             let mean;
@@ -362,7 +362,7 @@ suite('scoperesolver', () => {
             // we also use this to estimate how many iterations we need to run
             // inorder to do timing for TIMEING_TIME time.
             const preheat = process.hrtime();
-            while(true) {
+            while (true) {
               for (let i = 0; i < MIN_ITERATIONS; i++) {
                 result = fn();
               }
