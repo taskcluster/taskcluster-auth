@@ -96,6 +96,25 @@ suite('testAuthenticate', function() {
     clientScopes: ['test-scope:*'],
     errorCode: 'AuthenticationFailed',
   });
+
+  test('run testAuthenticate 1k', async () => {
+    let {config, requiredScopes, clientScopes, errorCode} = {
+      config: {credentials},
+      requiredScopes: ['test-scope:test'],
+      clientScopes: ['test-scope:test'],
+    };
+    await Promise.all(_.range(1000).map(async () => {
+      let auth = new helper.Auth(config);
+      await auth.testAuthenticate({requiredScopes, clientScopes}).then(() => {
+        assert(!errorCode, 'Request was successful, but expected an error ' +
+        'with code: ' + errorCode);
+      }, err => {
+        assert(errorCode, 'Request failed!');
+        assert(err.code === errorCode, 'Expected error with code: ' +
+        errorCode + ' but got: ' + err.code);
+      });
+    }));
+  });
 });
 
 suite('testAuthenticateGet', function() {
