@@ -1,5 +1,5 @@
 suite('trie', () => {
-  let {generateTrie, executeTrie} = require('../src/trie');
+  let {generateTrie, executeTrie} = require('../lib/trie');
   let {mergeScopeSets, scopeCompare} = require('taskcluster-lib-scopes');
   let assert = require('assert');
   let _ = require('lodash');

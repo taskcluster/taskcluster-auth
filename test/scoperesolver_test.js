@@ -1,5 +1,5 @@
 suite('scoperesolver', () => {
-  let ScopeResolver = require('../src/scoperesolver');
+  let ScopeResolver = require('../lib/scoperesolver');
   let {mergeScopeSets, scopeCompare} = require('taskcluster-lib-scopes');
   let assert = require('assert');
   let _ = require('lodash');
