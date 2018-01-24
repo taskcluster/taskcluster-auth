@@ -8,7 +8,7 @@ suite('scoperesolver', () => {
   let monitor, scopeResolver;
   before(async () => {
     monitor = await Monitor({project: 'mock-auth', mock: true});
-    scopeResolver = new ScopeResolver({monitor});
+    scopeResolver = new ScopeResolver({monitor, disableCache: true});
   });
 
   suite('buildResolver', function() {
