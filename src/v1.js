@@ -786,7 +786,7 @@ api.declare({
     this.resolver.reloadRoles(),
   ]);
 
-  return res.reply();
+  return res.status(200).send();
 });
 
 /** Expand a scopeset */
