@@ -182,19 +182,19 @@ api.declare({
 api.declare({
   method:     'get',
   route:      '/azure/:account/containers/:container/:level',
-  name:       'azureBlobSAS',
+  name:       'azureContainerSAS',
   input:      undefined,
-  output:     'azure-blob-response.json#',
+  output:     'azure-container-response.json#',
   stability:  'stable',
   scopes: {
     if: 'levelIsReadOnly',
     then: {AnyOf: [
-      'auth:azure-blob:read-only:<account>/<container>',
-      'auth:azure-blob:read-write:<account>/<container>',
+      'auth:azure-container:read-only:<account>/<container>',
+      'auth:azure-container:read-write:<account>/<container>',
     ]},
-    else: 'auth:azure-blob:read-write:<account>/<container>',
+    else: 'auth:azure-container:read-write:<account>/<container>',
   },
-  title:      'Get Shared-Access-Signature for Azure Blob',
+  title:      'Get Shared-Access-Signature for Azure Container',
   description: [
     'Get a shared access signature (SAS) string for use with a specific Azure',
     'Blob Storage container.',
