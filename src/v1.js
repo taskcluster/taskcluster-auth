@@ -272,7 +272,7 @@ api.declare({
   name:       'resetAccessToken',
   input:      undefined,
   output:     'create-client-response.json#',
-  scopes:     {AllOf: ['auth:reset-access-token:<clientId>']},
+  scopes:     'auth:reset-access-token:<clientId>',
   stability:  'stable',
   title:      'Reset `accessToken`',
   description: [
@@ -380,7 +380,7 @@ api.declare({
   name:       'enableClient',
   input:      undefined,
   output:     'get-client-response.json#',
-  scopes:     {AllOf: ['auth:enable-client:<clientId>']},
+  scopes:     'auth:enable-client:<clientId>',
   stability:  'stable',
   title:      'Enable Client',
   description: [
@@ -423,7 +423,7 @@ api.declare({
   name:       'disableClient',
   input:      undefined,
   output:     'get-client-response.json#',
-  scopes:     {AllOf: ['auth:disable-client:<clientId>']},
+  scopes:     'auth:disable-client:<clientId>',
   stability:  'stable',
   title:      'Disable Client',
   description: [
@@ -463,7 +463,7 @@ api.declare({
   method:     'delete',
   route:      '/clients/:clientId',
   name:       'deleteClient',
-  scopes:     {AllOf: ['auth:delete-client:<clientId>']},
+  scopes:     'auth:delete-client:<clientId>',
   stability:  'stable',
   title:      'Delete Client',
   description: [
@@ -727,7 +727,7 @@ api.declare({
   method:     'delete',
   route:      '/roles/:roleId',
   name:       'deleteRole',
-  scopes:     {AllOf: ['auth:delete-role:<roleId>']},
+  scopes:     'auth:delete-role:<roleId>',
   stability:  'stable',
   title:      'Delete Role',
   description: [

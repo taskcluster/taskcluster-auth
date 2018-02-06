@@ -9,7 +9,7 @@ api.declare({
   input:      undefined,
   output:     'azure-account-list-response.json#',
   stability:  'stable',
-  scopes:     {AllOf: ['auth:azure-table:list-accounts']},
+  scopes:     'auth:azure-table:list-accounts',
   title:      'List Accounts Managed by Auth',
   description: [
     'Retrieve a list of all Azure accounts managed by Taskcluster Auth.',
@@ -28,7 +28,7 @@ api.declare({
   input:      undefined,
   output:     'azure-table-list-response.json#',
   stability:  'stable',
-  scopes:     {AllOf: ['auth:azure-table:list-tables:<account>']},
+  scopes:     'auth:azure-table:list-tables:<account>',
   title:      'List Tables in an Account Managed by Auth',
   description: [
     'Retrieve a list of all tables in an account.',
@@ -59,13 +59,14 @@ api.declare({
   input:      undefined,
   output:     'azure-table-access-response.json#',
   stability:  'stable',
-  scopes:     {AnyOf: [
-    'auth:azure-table:<level>:<account>/<table>',
-    {
-      if: 'levelIsReadOnly',
-      then: 'auth:azure-table:read-write:<account>/<table>',
-    },
-  ]},
+  scopes: {
+    if: 'levelIsReadOnly',
+    then: {AnyOf: [
+      'auth:azure-table:read-only:<account>/<table>',
+      'auth:azure-table:read-write:<account>/<table>',
+    ]},
+    else: 'auth:azure-table:read-write:<account>/<table>',
+  },
   title:      'Get Shared-Access-Signature for Azure Table',
   description: [
     'Get a shared access signature (SAS) string for use with a specific Azure',
@@ -141,13 +142,14 @@ api.declare({
   input:      undefined,
   output:     'azure-blob-response.json#',
   stability:  'stable',
-  scopes:     {AnyOf: [
-    'auth:azure-blob:<level>:<account>/<container>',
-    {
-      if: 'levelIsReadOnly',
-      then: 'auth:azure-blob:read-write:<account>/<container>',
-    },
-  ]},
+  scopes: {
+    if: 'levelIsReadOnly',
+    then: {AnyOf: [
+      'auth:azure-blob:read-only:<account>/<container>',
+      'auth:azure-blob:read-write:<account>/<container>',
+    ]},
+    else: 'auth:azure-blob:read-write:<account>/<container>',
+  },
   title:      'Get Shared-Access-Signature for Azure Blob',
   description: [
     'Get a shared access signature (SAS) string for use with a specific Azure',

@@ -9,7 +9,7 @@ api.declare({
   input:      undefined,
   output:     'statsum-token-response.json#',
   stability:  'stable',
-  scopes:     {AllOf: ['auth:statsum:<project>']},
+  scopes:     'auth:statsum:<project>',
   title:      'Get Token for Statsum Project',
   description: [
     'Get temporary `token` and `baseUrl` for sending metrics to statsum.',

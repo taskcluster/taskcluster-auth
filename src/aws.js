@@ -10,13 +10,14 @@ api.declare({
     format:   /iam-role-compat/,
   },
   stability:  'stable',
-  scopes:     {AnyOf: [
-    'auth:aws-s3:<level>:<bucket>/<prefix>',
-    {
-      if: 'levelIsReadOnly',
-      then: 'auth:aws-s3:read-write:<bucket>/<prefix>',
-    },
-  ]},
+  scopes: {
+    if: 'levelIsReadOnly',
+    then: {AnyOf: [
+      'auth:aws-s3:read-only:<bucket>/<prefix>',
+      'auth:aws-s3:read-write:<bucket>/<prefix>',
+    ]},
+    else: 'auth:aws-s3:read-write:<bucket>/<prefix>',
+  },
   title:      'Get Temporary Read/Write Credentials S3',
   description: [
     'Get temporary AWS credentials for `read-write` or `read-only` access to',

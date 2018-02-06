@@ -8,7 +8,7 @@ api.declare({
   input:      undefined,
   output:     'sentry-dsn-response.json#',
   stability:  'stable',
-  scopes:     {AllOf: ['auth:sentry:<project>']},
+  scopes:     'auth:sentry:<project>',
   title:      'Get DSN for Sentry Project',
   description: [
     'Get temporary DSN (access credentials) for a sentry project.',
