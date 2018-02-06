@@ -157,7 +157,7 @@ api.declare({
   input:      undefined,
   output:     'azure-container-list-response.json#',
   stability:  'stable',
-  scopes:     'auth:azure-table:list-containers:<account>',
+  scopes:     'auth:azure-container:list-containers:<account>',
   title:      'List containers in an Account Managed by Auth',
   description: [
     'Retrieve a list of all containers in an account.',
