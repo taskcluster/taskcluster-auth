@@ -200,9 +200,9 @@ aws4@^1.2.1, aws4@^1.6.0:
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.6.0.tgz#83ef5ca860b2b32e4a0deedee8c771b9db57471e"
 
-azure-blob-storage@^2.0.2:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/azure-blob-storage/-/azure-blob-storage-2.0.3.tgz#8db1704d66e74e55350989f1a3c49c33e31fa879"
+azure-blob-storage@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/azure-blob-storage/-/azure-blob-storage-2.1.0.tgz#da4214cd80ca79bb9302e22800a2638f5f51e9dc"
   dependencies:
     ajv "^5.5.0"
     babel-runtime "^6.20.0"
@@ -2567,9 +2567,9 @@ taskcluster-client@^3.0.3, taskcluster-client@^3.1.0, taskcluster-client@^3.1.1:
     slugid "^1.1.0"
     superagent "~3.8.1"
 
-taskcluster-lib-api@^5:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-api/-/taskcluster-lib-api-5.0.0.tgz#752cbc79257989bd82007ffbc3c15e82b70333bd"
+taskcluster-lib-api@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-api/-/taskcluster-lib-api-6.0.1.tgz#c2b52139030bc1024c68aacea1bc23591125d53d"
   dependencies:
     ajv "^5.3.0"
     aws-sdk "^2.151.0"
@@ -2582,7 +2582,7 @@ taskcluster-lib-api@^5:
     promise "^8.0.1"
     slugid "^1.1.0"
     taskcluster-client "^3.1.0"
-    taskcluster-lib-scopes "^1.8.1"
+    taskcluster-lib-scopes "^1.9.0"
     type-is "^1.6.15"
     uuid "^3.1.0"
 
@@ -2654,15 +2654,9 @@ taskcluster-lib-monitor@4.6.3:
     taskcluster-client "^1.0.1"
     usage "^0.7.1"
 
-taskcluster-lib-scopes@1.6.5:
-  version "1.6.5"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-1.6.5.tgz#6184ae5b78f26a434ef279164d1fb198afd65d94"
-  dependencies:
-    babel-runtime "^6.26.0"
-
-taskcluster-lib-scopes@^1.8.1:
-  version "1.8.1"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-1.8.1.tgz#e85162a0435a2fd187cdbf8f5c25a96271127be7"
+taskcluster-lib-scopes@^1.9.0:
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/taskcluster-lib-scopes/-/taskcluster-lib-scopes-1.9.0.tgz#c8d6113d386d432b96eb73cfb182a335c5f49a90"
   dependencies:
     babel-runtime "^6.26.0"
 
