@@ -483,7 +483,7 @@ api.declare({
     this.resolver.reloadClient(clientId),
   ]);
 
-  return res.status(200).send();
+  return res.status(204).send();
 });
 
 /** List roles */
@@ -758,12 +758,32 @@ api.declare({
     this.resolver.reloadRoles(),
   ]);
 
-  return res.reply();
+  return res.status(204).send();
 });
 
 /** Expand a scopeset */
 api.declare({
   method:     'get',
+  route:      '/scopes/expand',
+  name:       'expandScopesGet',
+  input:      'scopeset.json#',
+  output:     'scopeset.json#',
+  stability:  'deprecated',
+  title:      'Expand Scopes',
+  description: [
+    'Return an expanded copy of the given scopeset, with scopes implied by any',
+    'roles included.',
+    '',
+    'This call uses the GET method with an HTTP body.  It remains only for',
+    'backward compatibility.',
+  ].join('\n'),
+}, async function(req, res) {
+  let input = req.body;
+  return res.reply({scopes: this.resolver.resolve(input.scopes)});
+});
+
+api.declare({
+  method:     'post',
   route:      '/scopes/expand',
   name:       'expandScopes',
   input:      'scopeset.json#',

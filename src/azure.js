@@ -2,6 +2,13 @@ var _           = require('lodash');
 var azure       = require('fast-azure-storage');
 var api         = require('./v1');
 
+// keyed by account/tableName, the last time createTable was called for the
+// given table.  This is used to avoid lots of redundant calls to createTable
+// for the same table.
+var tableLastCreated = {};
+// Similar for containers
+var containerLastCreated = {};
+
 api.declare({
   method:     'get',
   route:      '/azure/accounts',
@@ -102,14 +109,19 @@ api.declare({
     accessKey:  this.azureAccounts[account],
   });
 
-  // Create table ignore error, if it already exists
+  // Create table, ignore error, if it already exists
   if (level === 'read-write') {
-    try {
-      await table.createTable(tableName);
-    } catch (err) {
-      if (err.code !== 'TableAlreadyExists') {
-        throw err;
+    // only try to create if we haven't done so in this process recently
+    const key = `${account}/${tableName}`;
+    if (!tableLastCreated[key] || new Date() - tableLastCreated[key] > 6 * 3600 * 1000) {
+      try {
+        await table.createTable(tableName);
+      } catch (err) {
+        if (err.code !== 'TableAlreadyExists') {
+          throw err;
+        }
       }
+      tableLastCreated[key] = new Date();
     }
   }
 
@@ -133,6 +145,40 @@ api.declare({
     sas:      sas,
     expiry:   expiry.toJSON(),
   });
+});
+
+api.declare({
+  method:     'get',
+  route:      '/azure/:account/containers',
+  name:       'azureContainers',
+  query: {
+    continuationToken: /^[A-Za-z][A-Za-z0-9]{2,62}$/,
+  },
+  input:      undefined,
+  output:     'azure-container-list-response.json#',
+  stability:  'stable',
+  scopes:     [['auth:azure-table:list-containers:<account>']],
+  title:      'List containers in an Account Managed by Auth',
+  description: [
+    'Retrieve a list of all containers in an account.',
+  ].join('\n'),
+}, async function(req, res) {
+  let account = req.params.account;
+  let continuationToken  = req.query.continuationToken || null;
+
+  if (!req.satisfies({account})) { return; }
+
+  let blob = new azure.Blob({
+    accountId:  account,
+    accessKey:  this.azureAccounts[account],
+  });
+
+  let result = await blob.listContainers({marker: continuationToken});
+  let data = {containers: result.containers.map(c => c.name)};
+  if (result.nextMarker) {
+    data.continuationToken = result.nextMarker;
+  }
+  return res.reply(data);
 });
 
 api.declare({
@@ -182,12 +228,16 @@ api.declare({
 
   // Create container ignore error, if it already exists
   if (level === 'read-write') {
-    try {
-      await blob.createContainer(container);
-    } catch (err) {
-      if (err.code !== 'ContainerAlreadyExists') {
-        throw err;
+    const key = `${account}/${container}`;
+    if (!containerLastCreated[key] || new Date() - containerLastCreated[key] > 6 * 3600 * 1000) {
+      try {
+        await blob.createContainer(container);
+      } catch (err) {
+        if (err.code !== 'ContainerAlreadyExists') {
+          throw err;
+        }
       }
+      containerLastCreated[key] = new Date();
     }
   }
 
