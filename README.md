@@ -35,3 +35,5 @@ Note that you will need Heroku app access to do this!  Once your config is set
 up, just run `npm run checkStaging` to check the staging site for
 functionality.
 
+
+bump
