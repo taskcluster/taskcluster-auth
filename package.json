@@ -19,6 +19,7 @@
     "aws-sdk": "^2.150.0",
     "azure-blob-storage": "^2.1.0",
     "azure-entities": "3.0.0",
+    "collections": "^5.1.2",
     "debug": "^3.1.0",
     "fast-azure-storage": "^2.0.0",
     "hawk": "2.3.0",
@@ -48,6 +49,7 @@
     "typed-env-config": "^1.1.0"
   },
   "devDependencies": {
+    "0x": "^3.3.0",
     "eslint-config-taskcluster": "^3.0.0",
     "mocha": "^4.0.1"
   },

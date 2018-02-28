@@ -13299,7 +13299,6 @@
     ],
     "roleId": "mozilla-group:team_taskcluster",
     "scopes": [
-      "assume:*",
       "assume:project-admin:taskcluster",
       "auth:*",
       "aws-provisioner:*",
@@ -16415,7 +16414,6 @@
     ],
     "roleId": "project:deepspeech:admin",
     "scopes": [
-      "assume:project-admin:deepspeech",
       "assume:repo:github.com/mozilla/DeepSpeech:*",
       "assume:repo:github.com/mozilla/tensorflow:*",
       "auth:create-role:repo:github.com/mozilla/DeepSpeech:*",
@@ -19916,7 +19914,6 @@
     ],
     "roleId": "repo:github.com/devtools-html/devtools:branch:master",
     "scopes": [
-      "assume:repo:github.com/devtools-html/devtools:branch:master",
       "github:create-comment:devtools-html/devtools",
       "github:create-status:devtools-html/devtools",
       "index:insert-task:project.devtools.*",
@@ -19983,7 +19980,6 @@
     ],
     "roleId": "repo:github.com/glandium/git-cinnabar:*",
     "scopes": [
-      "assume:repo:github.com/glandium/git-cinnabar:decision-task"
     ],
     "description": "Some toy scopes for glandium to play with the QEMU worker...",
     "lastModified": "2017-08-15T01:24:37.817Z",
@@ -21032,7 +21028,6 @@
     ],
     "roleId": "repo:github.com/mozilla-releng/services:branch:production",
     "scopes": [
-      "assume:hook-id:project-releng/services-production-*",
       "docker-worker:cache:services-production-*",
       "hooks:modify-hook:project-releng/services-production-*",
       "hooks:trigger-hook:project-releng/services-production-*",
@@ -21080,7 +21075,6 @@
     ],
     "roleId": "repo:github.com/mozilla-releng/services:branch:staging",
     "scopes": [
-      "assume:hook-id:project-releng/services-staging-*",
       "docker-worker:cache:services-staging-*",
       "github:create-status:marco-c/gecko-dev",
       "hooks:modify-hook:project-releng/services-staging-*",
