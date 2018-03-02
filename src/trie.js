@@ -6,43 +6,6 @@ const PARAM = '\u001a';
 const PARAM_TO_END = /\u001a.*$/;
 
 /**
- * Transform rules from {pattern, scopes} to {pattern, scopes, matched, paramed},
- * where:
- *  - matched, is the non-parameterized scopes, and
- *  - paramed, is the parameterized scopes with PARAM instead of '<..>'
- */
-const transformRules = (rules) => rules.map(({pattern, scopes}) => {
-  const hasKleene = pattern.endsWith('*');
-  let matched = [];
-  let paramed = [];
-  for (const scope of scopes) {
-    if (hasKleene && scope.includes('<..>')) {
-      const s = scope.replace('<..>', PARAM);
-      paramed.push(s);
-      // We forbid more than one parameter injection
-      if (s.includes('<..>')) {
-        const err = new Error(`parameterized scope '${scope}' contains multiple '<..>'`);
-        err.code = 'InvalidScopeError';
-        err.scope = scope;
-        throw err;
-      }
-      // We forbid ambiguous kleenes
-      if (s.endsWith('*' + PARAM)) {
-        const err = new Error(`parameterized scope '${scope}' ends with '*<..>' which implies an ambiguous kleene`);
-        err.code = 'InvalidScopeError';
-        err.scope = scope;
-        throw err;
-      }
-    } else {
-      matched.push(scope);
-    }
-  }
-  matched = ScopeSetBuilder.normalizeScopeSet(matched);
-  paramed = ScopeSetBuilder.normalizeScopeSet(paramed);
-  return {pattern, scopes, matched, paramed};
-});
-
-/**
  * Given a sorted list of scopes that contains PARAM, replace PARAM with param
  * and return the sorted result.
  */
@@ -203,6 +166,47 @@ const execute = (node, input, builder = new ScopeSetBuilder()) => {
 exports.execute = execute;
 
 /**
+ * Transform rules from {pattern, scopes} to {pattern, scopes, matched, paramed},
+ * where:
+ *  - matched, is the non-parameterized scopes, and
+ *  - paramed, is the parameterized scopes with PARAM instead of '<..>'
+ */
+const transformRules = (rules) => rules.map(({pattern, scopes}) => {
+  // If not a prefix rule, then we can't have parameterized rules
+  if (!pattern.endsWith('*')) {
+    scopes = ScopeSetBuilder.normalizeScopeSet(scopes);
+    return {pattern, scopes, matched: scopes, paramed: []};
+  }
+  // Find matched and paramed from scopes
+  const matched = ScopeSetBuilder.normalizeScopeSet(scopes.filter(s => !s.includes('<..>')));
+  const paramed = ScopeSetBuilder.normalizeScopeSet(
+    scopes
+      .filter(s => s.includes('<..>'))
+      .map(s => s.replace('<..>', PARAM)),
+  );
+  // Validate legallity of parameterized scopes
+  for (const s of paramed) {
+    // We forbid more than one parameter injection
+    if (s.includes('<..>')) {
+      const scope = s.replace(PARAM, '<..>');
+      const err = new Error(`parameterized scope '${scope}' contains multiple '<..>'`);
+      err.code = 'InvalidScopeError';
+      err.scope = scope;
+      throw err;
+    }
+    // We forbid ambiguous kleenes
+    if (s.endsWith('*' + PARAM)) {
+      const scope = s.replace(PARAM, '<..>');
+      const err = new Error(`parameterized scope '${scope}' ends with '*<..>' which implies an ambiguous kleene`);
+      err.code = 'InvalidScopeError';
+      err.scope = scope;
+      throw err;
+    }
+  }
+  return {pattern, scopes, matched, paramed};
+});
+
+/**
  * Create a topological sorting of rules according to dependencies, defined
  * as follows:
  *
@@ -218,14 +222,21 @@ exports.execute = execute;
  * r2:   BX -> C
  * r1 depends on r2
  *
+ * r1:   A  -> BX
+ * r2:   B* -> C
+ * r1 depends on r2
+ *
  * For any two rules there is a dependency relationship if a parameterization
  * of one of the rules grants scopes that matches the other scope.
  *
  * This returns an topological ordering of rules, where <..> have been replaced
- * with PARAM in the scopes. If there is a dependency cycle this method will
- * throw an error with err.code = 'DependencyCycleError' and an err.cycle
- * property, this is the only effect of this method that useful outside this
- * file (and testing).
+ * with PARAM in the scopes.
+ *
+ * If there is a dependency cycle this method will throw an error with
+ * `err.code = 'DependencyCycleError'` and an `err.cycle` property.
+ * If there is illegal scope patterns this method will throw an error with
+ * `err.code = 'InvalidScopeError'` and an `err.scope` property.
+ * This is the only effect of this method that useful outside this file.
  */
 const dependencyOrdering = (rules = []) => {
   rules = transformRules(rules);
@@ -270,7 +281,7 @@ const dependencyOrdering = (rules = []) => {
     if (done.has(R)) {
       return; // Skip, if already in the ordering
     }
-    // If R is on the stack, we have a cycle...
+    // If R is on the stack (and !done.has(R)), we have a cycle...
     if (seen.has(R)) {
       const stack = [...seen]; // entries in Set are ordered by insertion order (neat)
       const cycle = [...stack.slice(stack.indexOf(R)), R].map(r => r.pattern);
@@ -317,7 +328,7 @@ exports.dependencyOrdering = dependencyOrdering;
  *
  * Notice, this will NOT modify the input trie, but some of its children may be
  * referenced in the result of this method. Hence, modifying the resulting trie
- * will invalidate the input trie, and vice versus.
+ * will invalidate the input trie, and vice versa.
  */
 const withPrefix = (trie, prefix = '') => {
   const enter = new ScopeSetBuilder({optionallyClone: true});
@@ -341,7 +352,7 @@ const withPrefix = (trie, prefix = '') => {
     end = target.end;
     kleeneOnly = target.kleeneOnly;
     enter.add(target.enter);
-    paramed.add(target.paramed); // <..> prefixed with empty remainder
+    paramed.add(target.paramed); // equivalent to withParam(target.paramed, '' + PARAM)
   }
 
   // Create a new root node
@@ -464,7 +475,7 @@ const build = (rules = []) => {
       let transformed = trie;
       if (prefix !== '') { // skip withPrefix if there is no prefix
         // Note that rules on the form: 'A*<..>B' are forbidden, so we need not
-        // worry about the limitations of withPrefix wrt. to input on the form
+        // worry about the limitations of withPrefix wrt. input on the form
         // '...*' (as this could never happen)
         transformed = withPrefix(transformed, prefix);
       }

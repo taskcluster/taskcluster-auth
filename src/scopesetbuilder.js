@@ -31,6 +31,7 @@ class BaseNode {
  */
 class LeafNode extends BaseNode {
   constructor(scopes) {
+    super();
     this.scopes = scopes;
     this.index = 0; // index of next value
     this.value = null;
@@ -51,6 +52,7 @@ class LeafNode extends BaseNode {
  */
 class MergeNode extends BaseNode {
   constructor(A, B) {
+    super();
     this.A = A.next();
     this.B = B.next();
     this.value = null;
