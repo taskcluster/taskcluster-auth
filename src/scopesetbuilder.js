@@ -1,8 +1,8 @@
 const {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 
 /**
- * A ScopeMergeTree is an object-structure that holds a tree of scope sets as
- * they are being merged.
+ * BaseNode is the base-class for all node in an object-structure that holds a
+ * tree of sorted scope sets as they are being merged.
  *
  * Merging a large set of normalized scope-sets using mergeScopeSets(A, B) is
  * expensive as it can only merge two scope-sets at a time, and allocates a new
@@ -15,21 +15,21 @@ const {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-l
  * something like O(N * log(M)), notes this just not proven math, merely a
  * casual guess backed by benchmarks.
  *
- * To make it even faster we allow nodes to run a different node (or this) from
- * the node.next() function, such that the return value is the tree after
+ * To make it even faster we allow nodes to return a different node (or this)
+ * from the node.next() function, such that the return value is the tree after
  * consumption of the current value. As a final technicality we leave node.value
  * undefined until the first call of node.next(), such that we can support empty
- * nodes like this, by returning null from node.next().
+ * nodes by returning null from node.next().
  */
-class EmptyNode {
-  next() { return null; }
+class BaseNode {
+  next() { new new Error('Node.next() not implemented'); }
 };
 
 /**
  * A LeafNode takes a normalized list of scopes and creates a merge-tree
  * consisting of one node.
  */
-class LeafNode {
+class LeafNode extends BaseNode {
   constructor(scopes) {
     this.scopes = scopes;
     this.index = 0; // index of next value
@@ -49,7 +49,7 @@ class LeafNode {
 /**
  * A MergeNode takes two nodes and creates a single ScopeMergeTree node.
  */
-class MergeNode {
+class MergeNode extends BaseNode {
   constructor(A, B) {
     this.A = A.next();
     this.B = B.next();
