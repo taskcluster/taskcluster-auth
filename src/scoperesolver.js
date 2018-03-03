@@ -14,7 +14,7 @@ const PARAMETER = /<\.\.\>/;
 const PARAMETER_G = /<\.\.\>/g;
 const PARAMETER_TO_END = /<\.\.>.*/;
 
-/** ZeroCache is an LRU cache instance that contains nothing */
+/** ZeroCache is an LRU cache instance that contains nothing for caching is disabled */
 const ZeroCache = {
   get: (k) => null,
   set: (k, v) => null,

@@ -11,7 +11,7 @@ const {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-l
  *
  * Instead we shall create a binary tree of nodes where each leaf holds a
  * scope-set, then we compute the next value for internal node by taking the
- * value from a child. This leaves us with an average complexity closer
+ * value from a child. This leaves us with an average complexity closer to
  * something like O(N * log(M)), notes this just not proven math, merely a
  * casual guess backed by benchmarks.
  *
@@ -118,7 +118,16 @@ const buildMergeTree = (scopeSets, i = 0, j = scopeSets.length - 1) => {
 
 /** A builder pattern of merging normalized scope-sets */
 class ScopeSetBuilder {
-  /** Create a ScopeSetBuilder optionally allow it to not clone when creating results */
+  /**
+   * Create a ScopeSetBuilder for merging multiple sets of sorted scopes.
+   *
+   * Using the `optionallyClone` option you allow the ScopeSetBuilder to not
+   * clone when creating results. If at-most one of the sets added to the
+   * ScopeSetBuilder is non-empty and `optionallyClone` is set this will return
+   * this object by reference. The `optionallyClone` is an optimization that
+   * should only be used when input and output is immutable. Otherwise, it's
+   * always safer to force clone the arrays, which is also default behavior.
+   */
   constructor({optionallyClone} = {optionallyClone: false}) {
     this.optionallyClone = !!optionallyClone;
     this.sets = [];

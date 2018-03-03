@@ -1,7 +1,7 @@
 suite('scoperesolver', () => {
   const ScopeResolver = require('../src/scoperesolver');
   const {mergeScopeSets, scopeCompare} = require('taskcluster-lib-scopes');
-  const Monitor            = require('taskcluster-lib-monitor');
+  const Monitor = require('taskcluster-lib-monitor');
   const assert = require('assert');
   const _ = require('lodash');
   const fs = require('fs');
