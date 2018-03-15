@@ -15,6 +15,7 @@ var Config      = require('typed-env-config');
 var azure       = require('fast-azure-storage');
 var containers  = require('../src/containers');
 var uuid        = require('uuid');
+var Exchanges = require('pulse-publisher');
 
 // Load configuration
 var cfg = Config({profile: 'test'});
@@ -37,7 +38,6 @@ helper.hasPulseCredentials = function() {
 helper.hasAzureCredentials = function() {
   return cfg.app.hasOwnProperty('azureAccounts') && cfg.app.azureAccounts;
 };
-
 // Configure PulseTestReceiver
 if (cfg.pulse.password) {
   helper.events = new testing.PulseTestReceiver(cfg.pulse, mocha);
@@ -55,6 +55,16 @@ class FakeRoles {
 
   async modify(modifier) {
     await modifier(this.roles);
+  }
+}
+
+class FakePublisher {
+  constructor() {
+    this.publisher = [];
+  }
+
+  async get() {
+    return this.publisher;
   }
 }
 
@@ -87,7 +97,65 @@ mocha.before(async () => {
     await helper.Roles.setup();
   }
 
+  //overwrites.publisher = await Exchanges.connect({fake:true});
+
   if (!helper.hasPulseCredentials()) {
+    helper.Auth = class {
+      ping() {
+        return Promise.resolve();
+      }
+      client(){
+        return Promise.resolve();
+      }
+      createClient(){
+        helper.events.triggerEvents(helper.authEvents, clientCreated());
+        return Promise.resolve();
+      }
+      deleteClient(){
+        return Promise.resolve();
+      }
+    };
+
+    helper.auth = new helper.Auth();
+
+    helper.authEvents ={
+      clientCreated: () => 'client created',
+      clientDeleted: () => 'client deleted',
+    };
+
+    class EventHandler {
+      constructor() {
+        this.eventCounter = {};
+        this.listener = {};
+      }
+
+      getListenersFromTriggerId (triggerId) {
+        return this.listener[triggerId];
+      }
+
+      listenFor(eventId, triggerId){
+        if (this.listener.hasOwnProperty(triggerId)) {
+          this.listener[triggerId].push(eventId);
+        } else {
+          this.listener[triggerId] = [eventId];
+        }
+        return Promise.resolve();
+      }
+      waitFor(eventId){
+        if (this.eventCounter[eventId] && this.eventCounter[eventId] > 0) {
+          this.eventCounter[eventId]--;
+          return Promise.resolve();
+        } else {
+          return Promise.reject();
+        }
+      }
+
+      clientDeleted(clientId) {
+        return Promise.resolve();
+      }
+    }
+
+    helper.events = new EventHandler();
     return;
   } else {
     overwrites.resolver = helper.resolver =
@@ -96,7 +164,6 @@ mocha.before(async () => {
     webServer = await serverLoad('server', overwrites);
     webServer.setTimeout(3500); // >3s because Azure can be sloooow
 
-    // Create client for working with API
     helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
     var reference = v1.reference({baseUrl: helper.baseUrl});
     helper.Auth = taskcluster.createClient(reference);

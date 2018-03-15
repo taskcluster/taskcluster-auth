@@ -10,9 +10,9 @@ suite('api (client)', function() {
   var taskcluster = require('taskcluster-client');
 
   if (!helper.hasPulseCredentials()) {
-    setup(function() {
-      this.skip();
-    });
+    // setup(function() {
+    //   this.skip();
+    // });
   } else {
     const cleanup = async () => {
       // Delete all non-static clients and roles
