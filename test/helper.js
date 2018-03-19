@@ -60,11 +60,31 @@ class FakeRoles {
 
 class FakePublisher {
   constructor() {
-    this.publisher = [];
+    this.clients = [];
   }
 
-  async get() {
-    return this.publisher;
+  async clientCreated(clientId) {
+    return Promise.resolve();
+  }
+
+  async clientUpdated(clientId) {
+    return Promise.resolve();
+  }
+
+  async clientDeleted(clientId) {
+    return Promise.resolve();
+  }
+
+  async roleUpdated(clientId) {
+    return Promise.resolve();
+  }
+
+  async roleCreated(clientId) {
+    return Promise.resolve();
+  }
+
+  async roleDeleted(clientId) {
+    return Promise.resolve();
   }
 }
 
@@ -97,73 +117,17 @@ mocha.before(async () => {
     await helper.Roles.setup();
   }
 
-  //overwrites.publisher = await Exchanges.connect({fake:true});
+  overwrites.publisher = new FakePublisher();
+
+  overwrites.resolver = helper.resolver =
+    await serverLoad('resolver', overwrites);
 
   if (!helper.hasPulseCredentials()) {
-    helper.Auth = class {
-      ping() {
-        return Promise.resolve();
-      }
-      client(){
-        return Promise.resolve();
-      }
-      createClient(){
-        helper.events.triggerEvents(helper.authEvents, clientCreated());
-        return Promise.resolve();
-      }
-      deleteClient(){
-        return Promise.resolve();
-      }
-    };
-
-    helper.auth = new helper.Auth();
-
-    helper.authEvents ={
-      clientCreated: () => 'client created',
-      clientDeleted: () => 'client deleted',
-    };
-
-    class EventHandler {
-      constructor() {
-        this.eventCounter = {};
-        this.listener = {};
-      }
-
-      getListenersFromTriggerId (triggerId) {
-        return this.listener[triggerId];
-      }
-
-      listenFor(eventId, triggerId){
-        if (this.listener.hasOwnProperty(triggerId)) {
-          this.listener[triggerId].push(eventId);
-        } else {
-          this.listener[triggerId] = [eventId];
-        }
-        return Promise.resolve();
-      }
-      waitFor(eventId){
-        if (this.eventCounter[eventId] && this.eventCounter[eventId] > 0) {
-          this.eventCounter[eventId]--;
-          return Promise.resolve();
-        } else {
-          return Promise.reject();
-        }
-      }
-
-      clientDeleted(clientId) {
-        return Promise.resolve();
-      }
-    }
-
-    helper.events = new EventHandler();
     return;
   } else {
-    overwrites.resolver = helper.resolver =
-      await serverLoad('resolver', overwrites);
 
     webServer = await serverLoad('server', overwrites);
     webServer.setTimeout(3500); // >3s because Azure can be sloooow
-
     helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
     var reference = v1.reference({baseUrl: helper.baseUrl});
     helper.Auth = taskcluster.createClient(reference);
