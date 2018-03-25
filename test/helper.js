@@ -20,6 +20,7 @@ var Exchanges = require('pulse-publisher');
 // Load configuration
 var cfg = Config({profile: 'test'});
 
+
 // Create subject to be tested by test
 var helper = module.exports = {};
 
@@ -123,51 +124,53 @@ mocha.before(async () => {
     await serverLoad('resolver', overwrites);
 
   if (!helper.hasPulseCredentials()) {
-    return;
-  } else {
+    webServer = null;
+    helper.baseUrl = 'http://localhost:8080/v1';
 
+  } else {
     webServer = await serverLoad('server', overwrites);
     webServer.setTimeout(3500); // >3s because Azure can be sloooow
     helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
-    var reference = v1.reference({baseUrl: helper.baseUrl});
-    helper.Auth = taskcluster.createClient(reference);
-    helper.scopes = (...scopes) => {
-      helper.auth = new helper.Auth({
-        baseUrl:          helper.baseUrl,
-        credentials: {
-          clientId:       'static/taskcluster/root',
-          accessToken:    helper.rootAccessToken,
-        },
-        authorizedScopes: scopes.length > 0 ? scopes : undefined,
-      });
-    };
-    helper.scopes();
-
-    // Create test server
-    let {
-      server:     testServer_,
-      reference:  testReference,
-      baseUrl:    testBaseUrl,
-      Client:     TestClient,
-      client:     testClient,
-    } = await testserver({
-      authBaseUrl: helper.baseUrl,
-      rootAccessToken: helper.rootAccessToken,
-    });
-
-    testServer = testServer_;
-    helper.testReference  = testReference;
-    helper.testBaseUrl    = testBaseUrl;
-    helper.TestClient     = TestClient;
-    helper.testClient     = testClient;
-
-    var exchangeReference = exchanges.reference({
-      exchangePrefix:   cfg.app.exchangePrefix,
-      credentials:      cfg.pulse,
-    });
-    helper.AuthEvents = taskcluster.createClient(exchangeReference);
-    helper.authEvents = new helper.AuthEvents();
   }
+
+  var reference = v1.reference({baseUrl: helper.baseUrl});
+  helper.Auth = taskcluster.createClient(reference);
+  helper.scopes = (...scopes) => {
+    helper.auth = new helper.Auth({
+      baseUrl:          helper.baseUrl,
+      credentials: {
+        clientId:       'root',
+        accessToken:    cfg.app.rootAccessToken,
+      },
+      authorizedScopes: scopes.length > 0 ? scopes : undefined,
+    });
+  };
+  helper.scopes();
+
+  // Create test server
+  let {
+    server:     testServer_,
+    reference:  testReference,
+    baseUrl:    testBaseUrl,
+    Client:     TestClient,
+    client:     testClient,
+  } = await testserver({
+    authBaseUrl: helper.baseUrl,
+    rootAccessToken: cfg.app.rootAccessToken,
+  });
+
+  testServer = testServer_;
+  helper.testReference  = testReference;
+  helper.testBaseUrl    = testBaseUrl;
+  helper.TestClient     = TestClient;
+  helper.testClient     = testClient;
+
+  var exchangeReference = exchanges.reference({
+    exchangePrefix:   cfg.app.exchangePrefix,
+    credentials:      cfg.pulse,
+  });
+  helper.AuthEvents = taskcluster.createClient(exchangeReference);
+  helper.authEvents = new helper.AuthEvents();
 });
 
 mocha.beforeEach(() => {
