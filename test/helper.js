@@ -17,6 +17,7 @@ var containers  = require('../src/containers');
 var uuid        = require('uuid');
 var Exchanges = require('pulse-publisher');
 
+process.env.pulse = {fake: true};
 // Load configuration
 var cfg = Config({profile: 'test'});
 
@@ -42,7 +43,9 @@ helper.hasAzureCredentials = function() {
 // Configure PulseTestReceiver
 if (cfg.pulse.password) {
   helper.events = new testing.PulseTestReceiver(cfg.pulse, mocha);
-};
+} else {
+  helper.events = new testing.PulseTestReceiver({fake:true}, mocha);
+}
 
 // fake "Roles" container
 class FakeRoles {
@@ -126,7 +129,6 @@ mocha.before(async () => {
   if (!helper.hasPulseCredentials()) {
     webServer = null;
     helper.baseUrl = 'http://localhost:8080/v1';
-
   } else {
     webServer = await serverLoad('server', overwrites);
     webServer.setTimeout(3500); // >3s because Azure can be sloooow
@@ -167,7 +169,7 @@ mocha.before(async () => {
 
   var exchangeReference = exchanges.reference({
     exchangePrefix:   cfg.app.exchangePrefix,
-    credentials:      cfg.pulse,
+    credentials:      {fake: true},
   });
   helper.AuthEvents = taskcluster.createClient(exchangeReference);
   helper.authEvents = new helper.AuthEvents();
