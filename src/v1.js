@@ -148,6 +148,42 @@ api.declare({
   res.reply(clients);
 });
 
+/** Paginate List clients */
+api.declare({
+  method:     'get',
+  route:      '/clients/',
+  query: {
+    prefix:  /^[A-Za-z0-9!@/:.+|_-]+$/, // should match clientId above
+    continuationToken: /./,
+    limit: /^[0-9]+$/,
+  },
+  name:       'paginateListClients',
+  input:      undefined,
+  output:     'list-clients-response.json#',
+  stability:  'stable',
+  title:      'List Clients',
+  description: [
+    'Get a list of all clients.  With `prefix`, only clients for which',
+    'it is a prefix of the clientId are returned.',
+  ].join('\n'),
+}, async function(req, res) {
+  let prefix = req.query.prefix;
+  let continuation  = req.query.continuationToken || null;
+  let limit         = parseInt(req.query.limit || 1000, 10);
+
+  // Load all clients
+  // TODO: as we acquire more clients, perform the prefix filtering in Azure
+  let data = await this.Client.scan({}, { limit, continuation });
+  let response = { clients: [], continuation : data.continuation };
+  data.entries.forEach(client => {
+    if (!prefix || client.clientId.startsWith(prefix)) {
+      response.clients.push(client.json(this.resolver));
+    }
+  });
+
+  res.reply(response);
+});
+
 /** Get client */
 api.declare({
   method:     'get',
