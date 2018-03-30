@@ -110,7 +110,7 @@ suite('api (client)', function() {
     ));
 
     let gotSuffixes = (result) =>
-      _.map(_.filter(result,
+      _.map(_.filter(result.clients,
         c => c.clientId.startsWith(CLIENT_ID)),
       c => c.clientId.substr(CLIENT_ID.length)).sort();
 
@@ -123,42 +123,6 @@ suite('api (client)', function() {
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb/'})))
       .to.deeply.equal(['/bb/1', '/bb/2']);
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/c'})))
-      .to.deeply.equal([]);
-
-    // clean up
-    await Promise.all(suffixes.map(suffix =>
-      helper.auth.deleteClient(CLIENT_ID + suffix)
-    ));
-  });
-
-  test('auth.paginateListClients', async () => {
-    let suffixes = ['/aa', '/bb', '/bb/1', '/bb/2'];
-
-    await Promise.all(suffixes.map(suffix =>
-      helper.auth.deleteClient(CLIENT_ID + suffix)
-    ));
-
-    await Promise.all(suffixes.map(suffix =>
-      helper.auth.createClient(CLIENT_ID + suffix, {
-        expires: taskcluster.fromNow('1 hour'),
-        description: 'test client',
-      })
-    ));
-
-    let gotSuffixes = (result) =>
-      _.map(_.filter(result,
-        c => c.clientId.startsWith(CLIENT_ID)),
-      c => c.clientId.substr(CLIENT_ID.length)).sort();
-
-    // get all clients
-    assume(gotSuffixes(await helper.auth.paginateListClients().clients)).to.deeply.equal(suffixes);
-
-    // prefix filtering
-    assume(gotSuffixes(await helper.auth.paginateListClients({prefix: CLIENT_ID + '/bb'}).clients))
-      .to.deeply.equal(['/bb', '/bb/1', '/bb/2']);
-    assume(gotSuffixes(await helper.auth.paginateListClients({prefix: CLIENT_ID + '/bb/'}).clients))
-      .to.deeply.equal(['/bb/1', '/bb/2']);
-    assume(gotSuffixes(await helper.auth.paginateListClients({prefix: CLIENT_ID + '/c'}).clients))
       .to.deeply.equal([]);
 
     // clean up

@@ -124,6 +124,8 @@ api.declare({
   route:      '/clients/',
   query: {
     prefix:  /^[A-Za-z0-9!@/:.+|_-]+$/, // should match clientId above
+    continuationToken: /./,
+    limit: /^[0-9]+$/,
   },
   name:       'listClients',
   input:      undefined,
@@ -136,54 +138,35 @@ api.declare({
   ].join('\n'),
 }, async function(req, res) {
   let prefix = req.query.prefix;
+  let continuation  = req.query.continuationToken || undefined;
+  let limit         = parseInt(req.query.limit || 10, 10);
+  let Client = this.Client;
+  let resolver = this.resolver;
 
-  // Load all clients
-  // TODO: as we acquire more clients, perform the prefix filtering in Azure
-  let clients = [];
-  await this.Client.scan({}, {
-    handler: client => {
+  const method = async function(limit, continuation) {
+    let response = {clients: [], continuation};
+    let data = await Client.scan({}, {limit, continuation});
+    data.entries.forEach(client => {
       if (!prefix || client.clientId.startsWith(prefix)) {
-        clients.push(client.json(this.resolver));
+        response.clients.push(client.json(resolver));
       }
-    },
-  });
+    });
+    response.continuation = data.continuation;
+    return response;
+  };
 
-  res.reply(clients);
-});
-
-/** Paginate List clients */
-api.declare({
-  method:     'get',
-  route:      '/clients/',
-  query: {
-    prefix:  /^[A-Za-z0-9!@/:.+|_-]+$/, // should match clientId above
-    continuationToken: /./,
-    limit: /^[0-9]+$/,
-  },
-  name:       'paginateListClients',
-  input:      undefined,
-  output:     'list-clients-response.json#',
-  stability:  'stable',
-  title:      'List Clients',
-  description: [
-    'Get a list of all clients.  With `prefix`, only clients for which',
-    'it is a prefix of the clientId are returned.',
-  ].join('\n'),
-}, async function(req, res) {
-  let prefix = req.query.prefix;
-  let continuation  = req.query.continuationToken || null;
-  let limit         = parseInt(req.query.limit || 1000, 10);
-
-  // Load all clients
-  // TODO: as we acquire more clients, perform the prefix filtering in Azure
-  let data = await this.Client.scan({}, { limit, continuation });
-  let response = { clients: [], continuation : data.continuation };
-  data.entries.forEach(client => {
-    if (!prefix || client.clientId.startsWith(prefix)) {
-      response.clients.push(client.json(this.resolver));
+  const retryMethod = async function(limit, continuation, retries) {
+    let i = 1;
+    let response = await method(limit, continuation);
+    while (i <= retries && _.isEmpty(response.clients)) {
+      continuation = response.continuation;
+      response = await method(limit, continuation);
+      i++;
     }
-  });
+    return response;
+  };
 
+  let response = await retryMethod(limit, continuation, 1);
   res.reply(response);
 });
 
