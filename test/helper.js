@@ -17,7 +17,7 @@ var containers  = require('../src/containers');
 var uuid        = require('uuid');
 var Exchanges = require('pulse-publisher');
 
-process.env.pulse = {fake: true};
+process.env.AZURE_ACCOUNTS = {taskclusterdev: "hello"}
 // Load configuration
 var cfg = Config({profile: 'test'});
 
@@ -43,8 +43,6 @@ helper.hasAzureCredentials = function() {
 // Configure PulseTestReceiver
 if (cfg.pulse.password) {
   helper.events = new testing.PulseTestReceiver(cfg.pulse, mocha);
-} else {
-  helper.events = new testing.PulseTestReceiver({fake:true}, mocha);
 }
 
 // fake "Roles" container
@@ -64,30 +62,36 @@ class FakeRoles {
 
 class FakePublisher {
   constructor() {
-    this.clients = [];
+    this.calls= [];
   }
 
-  async clientCreated(clientId) {
+  async clientCreated({clientId}) {
+    this.calls.push({method:'clientCreated'}, clientId);
     return Promise.resolve();
   }
 
-  async clientUpdated(clientId) {
+  async clientUpdated({clientId}) {
+    this.calls.push({method:'clientUpdated'}, clientId);
     return Promise.resolve();
   }
 
-  async clientDeleted(clientId) {
+  async clientDeleted({clientId}) {
+    this.calls.push({method:'clientUpdated'}, clientId);
     return Promise.resolve();
   }
 
-  async roleUpdated(clientId) {
+  async roleUpdated({clientId}) {
+    this.calls.push({method:'roleUpdated'}, clientId);
     return Promise.resolve();
   }
 
   async roleCreated(clientId) {
+    this.calls.push({method:'roleCreated'}, clientId);
     return Promise.resolve();
   }
 
   async roleDeleted(clientId) {
+    this.calls.push({method:'roleDeleted'}, clientId);
     return Promise.resolve();
   }
 }
@@ -126,14 +130,11 @@ mocha.before(async () => {
   overwrites.resolver = helper.resolver =
     await serverLoad('resolver', overwrites);
 
-  if (!helper.hasPulseCredentials()) {
-    webServer = null;
-    helper.baseUrl = 'http://localhost:8080/v1';
-  } else {
-    webServer = await serverLoad('server', overwrites);
-    webServer.setTimeout(3500); // >3s because Azure can be sloooow
-    helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
-  }
+  overwrites.connection = new taskcluster.PulseConnection({fake: true});
+
+  webServer = await serverLoad('server', overwrites);
+  webServer.setTimeout(3500); // >3s because Azure can be sloooow
+  helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
 
   var reference = v1.reference({baseUrl: helper.baseUrl});
   helper.Auth = taskcluster.createClient(reference);
