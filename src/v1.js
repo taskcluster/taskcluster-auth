@@ -138,35 +138,35 @@ api.declare({
   ].join('\n'),
 }, async function(req, res) {
   let prefix = req.query.prefix;
-  let continuation  = req.query.continuationToken || undefined;
+  let continuationToken  = req.query.continuationToken || undefined;
   let limit         = parseInt(req.query.limit || 10, 10);
   let Client = this.Client;
   let resolver = this.resolver;
 
-  const method = async function(limit, continuation) {
-    let response = {clients: [], continuation};
-    let data = await Client.scan({}, {limit, continuation});
+  const method = async function(limit, continuationToken) {
+    let response = {clients: [], continuationToken};
+    let data = await Client.scan({}, {limit, continuation: continuationToken});
     data.entries.forEach(client => {
       if (!prefix || client.clientId.startsWith(prefix)) {
         response.clients.push(client.json(resolver));
       }
     });
-    response.continuation = data.continuation;
+    response.continuationToken = data.continuation;
     return response;
   };
 
-  const retryMethod = async function(limit, continuation, retries) {
+  const retryMethod = async function(limit, continuationToken, retries) {
     let i = 1;
-    let response = await method(limit, continuation);
+    let response = await method(limit, continuationToken);
     while (i <= retries && _.isEmpty(response.clients)) {
-      continuation = response.continuation;
-      response = await method(limit, continuation);
+      continuationToken = response.continuationToken;
+      response = await method(limit, continuationToken);
       i++;
     }
     return response;
   };
 
-  let response = await retryMethod(limit, continuation, 1);
+  let response = await retryMethod(limit, continuationToken, 1);
   res.reply(response);
 });
 
