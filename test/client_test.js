@@ -9,19 +9,14 @@ suite('api (client)', function() {
   var testing     = require('taskcluster-lib-testing');
   var taskcluster = require('taskcluster-client');
 
-  if (!helper.hasPulseCredentials()) {
-    // setup(function() {
-    //   this.skip();
-    // });
-  } else {
-    const cleanup = async () => {
-      // Delete all non-static clients and roles
-      await helper.Client.scan({}, {handler: c => c.clientId.startsWith('static/') ? null : c.remove()});
-      await helper.Roles.modify((roles) => roles.splice(0));
-    };
-    setup(cleanup);
-    teardown(cleanup);
-  }
+  const cleanup = async () => {
+    // Delete all clients and roles
+    await helper.Client.scan({}, {handler: c => c.clientId === 'root' ? null : c.remove()});
+    await helper.Roles.modify((roles) => roles.splice(0));
+  };
+  setup(cleanup);
+  teardown(cleanup);
+
 
   test('ping', async () => {
     await helper.auth.ping();
@@ -37,10 +32,6 @@ suite('api (client)', function() {
   });
   const CLIENT_ID = 'nobody/sds:ad_asd/df-sAdSfchsdfsdfs';
   test('auth.deleteClient (non-existent)', async () => {
-    await helper.authEvents.clientDeleted({
-      clientId:  CLIENT_ID,
-    });
-
     await helper.auth.deleteClient(CLIENT_ID);
     await helper.auth.deleteClient(CLIENT_ID);
 
@@ -70,11 +61,6 @@ suite('api (client)', function() {
   });
 
   test('auth.createClient (no scopes)', async () => {
-
-    await helper.authEvents.clientCreated({
-      clientId:  CLIENT_ID,
-    });
-
     var expires = taskcluster.fromNow('1 hour');
     var description = 'Test client...';
     let client = await helper.auth.createClient(CLIENT_ID, {
@@ -133,10 +119,6 @@ suite('api (client)', function() {
   });
 
   test('auth.createClient (with scopes)', async () => {
-    await helper.authEvents.clientCreated({
-      clientId:  CLIENT_ID,
-    });
-
     var expires = taskcluster.fromNow('1 hour');
     var description = 'Test client...';
     var scopes = ['scope1', 'myapi:*'];
@@ -163,14 +145,10 @@ suite('api (client)', function() {
     assume(client2.scopes).not.contains('assume:client-id:' + CLIENT_ID);
     assume(client2.expandedScopes).not.contains('assume:client-id:' + CLIENT_ID);
 
-  assert.deepEqual(helper.publisher.calls, [{method: 'clientCreated', clientId: CLIENT_ID}]);
+    assert.deepEqual(helper.publisher.calls, [{method: 'clientCreated', clientId: CLIENT_ID}]);
   });
 
   const createTestClient = async () => {
-    await helper.authEvents.clientCreated({
-      clientId:  CLIENT_ID,
-    });
-
     var expires = taskcluster.fromNow('1 hour');
     var description = 'Test client...';
     var scopes = ['scope1', 'myapi:*'];
@@ -178,16 +156,12 @@ suite('api (client)', function() {
       expires, description, scopes,
     });
 
-    assert.deepEqual(helper.publisher.calls, [{method: 'clientDeleted', clientId: CLIENT_ID},
-      {method: 'clientDeleted', clientId: CLIENT_ID}]);
+    assert.deepEqual(helper.publisher.calls, [{method: 'clientCreated', clientId: CLIENT_ID}]);
+    helper.publisher.calls = [];
   };
 
   test('auth.resetAccessToken', async () => {
-
-    helper.authEvents.clientUpdated({
-      clientId:  CLIENT_ID,
-    });
-
+    await createTestClient();
     let client = await helper.auth.resetAccessToken(CLIENT_ID);
     assume(new Date(client.lastRotated).getTime())
       .is.greaterThan(new Date(client.lastModified).getTime());
@@ -200,6 +174,7 @@ suite('api (client)', function() {
   });
 
   test('use client', async () => {
+    await createTestClient();
 
     // Fetch client
     let r1 = await helper.auth.client(CLIENT_ID);
@@ -239,10 +214,7 @@ suite('api (client)', function() {
   });
 
   test('auth.updateClient (no scope changes)', async () => {
-
-    helper.authEvents.clientUpdated({
-      clientId:  CLIENT_ID,
-    });
+    await createTestClient();
 
     var expires = new Date();
     let description = 'Different test description...';
@@ -270,10 +242,7 @@ suite('api (client)', function() {
   });
 
   test('auth.updateClient (with scope changes)', async () => {
-
-    helper.authEvents.clientUpdated({
-      clientId:  CLIENT_ID,
-    });
+    await createTestClient();
 
     var expires = new Date();
     let description = 'Third test description...';
@@ -308,6 +277,7 @@ suite('api (client)', function() {
   });
 
   test('auth.disableClient / enableClient', async () => {
+    await createTestClient();
 
     let client = await helper.auth.disableClient(CLIENT_ID);
     assume(client.disabled).equals(true);
@@ -325,10 +295,7 @@ suite('api (client)', function() {
   });
 
   test('auth.deleteClient', async () => {
-
-    helper.authEvents.clientDeleted({
-      clientId:  CLIENT_ID,
-    });
+    await createTestClient();
 
     await helper.auth.deleteClient(CLIENT_ID);
     await helper.auth.deleteClient(CLIENT_ID);
@@ -360,12 +327,6 @@ suite('api (client)', function() {
   });
 
   test('auth.expandScopes with expanding scopes', async () => {
-    helper.authEvents.roleCreated({
-      roleId:  'myrole:a'
-    });
-    helper.authEvents.roleCreated({
-      roleId:  'myrole:b'
-    });
 
     await helper.auth.createRole('myrole:a', {
       description: 'test role',
@@ -376,7 +337,8 @@ suite('api (client)', function() {
       scopes: ['assume:myrole:a', 'myapi:b:a'],
     });
 
-    assert.deepEqual(helper.publisher.calls, [{method: 'roleCreated', roleId: 'myrole:a'},{method: 'roleCreated', roleId: 'myrole:b'}]);
+    assert.deepEqual(helper.publisher.calls, [{
+      method: 'roleCreated', roleId: 'myrole:a'}, {method: 'roleCreated', roleId: 'myrole:b'}]);
 
     assumeScopesetsEqual(await helper.auth.expandScopes({scopes: [
       'assume:myrole:b',

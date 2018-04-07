@@ -151,8 +151,8 @@ let load = Loader({
 
   connection: {
     requires: ['cfg'],
-    setup: async ({ cfg }) => {
-      return new taskcluster.PulseConnection(cfg.pulse)
+    setup: async ({cfg}) => {
+      return new taskcluster.PulseConnection(cfg.pulse);
     },
   },
 
@@ -162,7 +162,7 @@ let load = Loader({
       'sentryManager', 'monitor', 'connection',
     ],
     setup: async ({
-      cfg, Client, Roles, validator, publisher, resolver, sentryManager, monitor, connection
+      cfg, Client, Roles, validator, publisher, resolver, sentryManager, monitor, connection,
     }) => {
       // Set up the Azure tables
       await Client.ensureTable();

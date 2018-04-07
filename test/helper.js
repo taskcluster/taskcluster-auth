@@ -17,10 +17,8 @@ var containers  = require('../src/containers');
 var uuid        = require('uuid');
 var Exchanges = require('pulse-publisher');
 
-process.env.AZURE_ACCOUNTS = {taskclusterdev: "hello"}
 // Load configuration
 var cfg = Config({profile: 'test'});
-
 
 // Create subject to be tested by test
 var helper = module.exports = {};
@@ -40,10 +38,6 @@ helper.hasPulseCredentials = function() {
 helper.hasAzureCredentials = function() {
   return cfg.app.hasOwnProperty('azureAccounts') && cfg.app.azureAccounts;
 };
-// Configure PulseTestReceiver
-if (cfg.pulse.password) {
-  helper.events = new testing.PulseTestReceiver(cfg.pulse, mocha);
-}
 
 // fake "Roles" container
 class FakeRoles {
@@ -66,7 +60,9 @@ class FakePublisher {
   }
 
   async clientCreated({clientId}) {
-    this.calls.push({method:'clientCreated', clientId});
+    if (this.calls.filter(call => call.method == 'clientCreated' && call.clientId == clientId).length  == 0) {
+      this.calls.push({method: 'clientCreated', clientId});
+    }
     return Promise.resolve();
   }
 
@@ -76,7 +72,7 @@ class FakePublisher {
   }
 
   async clientDeleted({clientId}) {
-    if (this.calls.filter(call => call.method == 'clientDeleted' && call.clientId == clientId).length  == 0){
+    if (this.calls.filter(call => call.method == 'clientDeleted' && call.clientId == clientId).length  == 0) {
       this.calls.push({method:'clientDeleted', clientId});
     }
     return Promise.resolve();
@@ -88,12 +84,17 @@ class FakePublisher {
   }
 
   async roleCreated({roleId}) {
-    this.calls.push({method:'roleCreated', roleId});
+    if (this.calls.filter(call => call.method == 'roleCreated' && call.roleId == roleId).length  == 0) {
+      this.calls.push({method:'roleCreated', roleId});
+    }
+
     return Promise.resolve();
   }
 
   async roleDeleted({roleId}) {
-    this.calls.push({method:'roleDeleted', roleId});
+    if (this.calls.filter(call => call.method == 'roleDeleted' && call.roleId == roleId).length  == 0) {
+      this.calls.push({method:'roleDeleted', roleId});
+    }
     return Promise.resolve();
   }
 }
