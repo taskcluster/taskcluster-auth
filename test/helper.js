@@ -66,32 +66,34 @@ class FakePublisher {
   }
 
   async clientCreated({clientId}) {
-    this.calls.push({method:'clientCreated'}, clientId);
+    this.calls.push({method:'clientCreated', clientId});
     return Promise.resolve();
   }
 
   async clientUpdated({clientId}) {
-    this.calls.push({method:'clientUpdated'}, clientId);
+    this.calls.push({method:'clientUpdated', clientId});
     return Promise.resolve();
   }
 
   async clientDeleted({clientId}) {
-    this.calls.push({method:'clientUpdated'}, clientId);
+    if (this.calls.filter(call => call.method == 'clientDeleted' && call.clientId == clientId).length  == 0){
+      this.calls.push({method:'clientDeleted', clientId});
+    }
     return Promise.resolve();
   }
 
-  async roleUpdated({clientId}) {
-    this.calls.push({method:'roleUpdated'}, clientId);
+  async roleUpdated({roleId}) {
+    this.calls.push({method:'roleUpdated', roleId});
     return Promise.resolve();
   }
 
-  async roleCreated(clientId) {
-    this.calls.push({method:'roleCreated'}, clientId);
+  async roleCreated({roleId}) {
+    this.calls.push({method:'roleCreated', roleId});
     return Promise.resolve();
   }
 
-  async roleDeleted(clientId) {
-    this.calls.push({method:'roleDeleted'}, clientId);
+  async roleDeleted({roleId}) {
+    this.calls.push({method:'roleDeleted', roleId});
     return Promise.resolve();
   }
 }
@@ -125,7 +127,7 @@ mocha.before(async () => {
     await helper.Roles.setup();
   }
 
-  overwrites.publisher = new FakePublisher();
+  overwrites.publisher = helper.publisher = new FakePublisher();
 
   overwrites.resolver = helper.resolver =
     await serverLoad('resolver', overwrites);
@@ -178,9 +180,8 @@ mocha.before(async () => {
 
 mocha.beforeEach(() => {
   // Setup client with all scopes
-  if (helper.hasPulseCredentials()) {
-    helper.scopes();
-  }
+  helper.scopes();
+  helper.publisher.calls = [];
 });
 
 // Cleanup after tests
@@ -201,9 +202,6 @@ mocha.after(async () => {
       // before the tests are complete, so we "leak" containers despite this effort to
       // clean them up.
     }
-  }
-  if (!helper.hasPulseCredentials()) {
-    return;
   }
   // Kill servers
   if (testServer) {
