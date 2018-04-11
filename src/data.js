@@ -127,8 +127,7 @@ Client.syncStaticClients = async function(clients = []) {
 
   // description suffix to use for all static clients
   const descriptionSuffix = [
-    '',
-    '---',
+    '\n---\n',
     'This is a **static client** inserted into this taskcluster deployment',
     'through static configuration. To modify this client you must contact the',
     'administrator who deploys this taskcluster instance.',

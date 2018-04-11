@@ -24,7 +24,7 @@ defaults:
     # modified or deleted at runtime. Useful for granting clientIds to other
     # services and boostrapping with a root client.
     # Each entry must have: clientId, accessToken, description, scopes
-    # where clientId MUST start with static, by convention these namespaced:
+    # where clientId MUST start with 'static/', by convention these namespaced:
     #    static/<project>/<name>
     staticClients:
       # Must have clientId starting with "static/"
