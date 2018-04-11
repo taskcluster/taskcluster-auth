@@ -40,11 +40,12 @@ suite('static clients', function() {
     debug('test that we can create static clients');
     await helper.Client.syncStaticClients([
       ...helper.cfg.app.staticClients, {
-      clientId: 'static/taskcluster/test-static-client',
-      accessToken: 'test-secret',
-      description: 'Just testing, you should never see this in production!!!',
-      scopes: ['dummy-scope'],
-    }]);
+        clientId: 'static/taskcluster/test-static-client',
+        accessToken: 'test-secret',
+        description: 'Just testing, you should never see this in production!!!',
+        scopes: ['dummy-scope'],
+      },
+    ]);
 
     debug('test that static client was created');
     const c = await helper.auth.client('static/taskcluster/test-static-client');
