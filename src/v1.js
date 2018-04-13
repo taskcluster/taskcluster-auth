@@ -143,30 +143,21 @@ api.declare({
   let Client = this.Client;
   let resolver = this.resolver;
 
-  const method = async function(limit, continuationToken) {
-    let response = {clients: [], continuationToken};
+  let response = {clients: []};
+
+  while (true) {
     let data = await Client.scan({}, {limit, continuation: continuationToken});
     data.entries.forEach(client => {
       if (!prefix || client.clientId.startsWith(prefix)) {
         response.clients.push(client.json(resolver));
       }
     });
-    response.continuationToken = data.continuation;
-    return response;
-  };
-
-  const retryMethod = async function(limit, continuationToken, retries) {
-    let i = 1;
-    let response = await method(limit, continuationToken);
-    while (i <= retries && _.isEmpty(response.clients)) {
-      continuationToken = response.continuationToken;
-      response = await method(limit, continuationToken);
-      i++;
+    continuationToken = data.continuation || undefined;
+    if (!_.isEmpty(response.clients) || !continuationToken) {
+      break;
     }
-    return response;
-  };
-
-  let response = await retryMethod(limit, continuationToken, 1);
+  }
+  response.continuationToken = continuationToken;
   res.reply(response);
 });
 

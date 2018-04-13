@@ -95,7 +95,7 @@ mocha.before(async () => {
 
     webServer = await serverLoad('server', overwrites);
     webServer.setTimeout(3500); // >3s because Azure can be sloooow
-    
+
     // Create client for working with API
     helper.baseUrl = 'http://localhost:' + webServer.address().port + '/v1';
     var reference = v1.reference({baseUrl: helper.baseUrl});

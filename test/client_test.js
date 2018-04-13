@@ -115,7 +115,8 @@ suite('api (client)', function() {
       c => c.clientId.substr(CLIENT_ID.length)).sort();
 
     // get all clients
-    assume(gotSuffixes(await helper.auth.listClients())).to.deeply.equal(suffixes);
+    let clients = await helper.auth.listClients();
+    assume(gotSuffixes(clients)).to.deeply.equal(suffixes);
 
     // prefix filtering
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb'})))
