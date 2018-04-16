@@ -96,7 +96,7 @@ suite('api (client)', function() {
   });
 
   test('auth.listClients', async () => {
-    let suffixes = ['/aa', '/bb', '/bb/1', '/bb/2'];
+    let suffixes = ['/aa', '/bb', '/bb/1', '/bb/2', '/bb/3', '/bb/4', '/bb/5'];
 
     await Promise.all(suffixes.map(suffix =>
       helper.auth.deleteClient(CLIENT_ID + suffix)
@@ -120,11 +120,24 @@ suite('api (client)', function() {
 
     // prefix filtering
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb'})))
-      .to.deeply.equal(['/bb', '/bb/1', '/bb/2']);
+      .to.deeply.equal(['/bb', '/bb/1', '/bb/2', '/bb/3', '/bb/4', '/bb/5']);
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/bb/'})))
       .to.deeply.equal(['/bb/1', '/bb/2']);
     assume(gotSuffixes(await helper.auth.listClients({prefix: CLIENT_ID + '/c'})))
       .to.deeply.equal([]);
+    assume(gotSuffixes(await helper.auth.listClients({
+      prefix: CLIENT_ID + '/bb',
+      limit: 1,
+    }))).to.deeply.equal(['/bb']);
+    assume(gotSuffixes(await helper.auth.listClients({
+      prefix: CLIENT_ID + '/bb',
+      limit: 3,
+    }))).to.deeply.equal(['/bb', '/bb/1', '/bb/2']);
+
+    // clean up
+    await Promise.all(suffixes.map(suffix =>
+      helper.auth.deleteClient(CLIENT_ID + suffix)
+    ));
 
     // clean up
     await Promise.all(suffixes.map(suffix =>

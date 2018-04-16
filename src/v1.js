@@ -258,6 +258,7 @@ api.declare({
 
     // If stored client different or older than 15 min we return 409
     let created = new Date(client.details.created).getTime();
+
     if (client.description !== input.description ||
         client.expires.getTime() !== new Date(input.expires).getTime() ||
         !_.isEqual(client.scopes, scopes) ||
