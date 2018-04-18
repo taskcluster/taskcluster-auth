@@ -200,7 +200,10 @@ suite('api (roles)', function() {
 
     setup(async function() {
       auth = new helper.Auth({
-        credentials: {clientId: 'root', accessToken: helper.rootAccessToken},
+        credentials: {
+          clientId: 'static/taskcluster/root',
+          accessToken: helper.rootAccessToken,
+        },
         authorizedScopes: [
           'auth:update-role:*',
           'scope:role-has:a',

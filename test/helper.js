@@ -145,8 +145,8 @@ mocha.before(async () => {
     helper.auth = new helper.Auth({
       baseUrl:          helper.baseUrl,
       credentials: {
-        clientId:       'root',
-        accessToken:    cfg.app.rootAccessToken,
+        clientId:       'static/taskcluster/root',
+        accessToken:    helper.rootAccessToken,
       },
       authorizedScopes: scopes.length > 0 ? scopes : undefined,
     });
@@ -162,7 +162,7 @@ mocha.before(async () => {
     client:     testClient,
   } = await testserver({
     authBaseUrl: helper.baseUrl,
-    rootAccessToken: cfg.app.rootAccessToken,
+    rootAccessToken: helper.rootAccessToken,
   });
 
   testServer = testServer_;

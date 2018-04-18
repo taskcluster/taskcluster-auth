@@ -11,12 +11,11 @@ suite('api (client)', function() {
 
   const cleanup = async () => {
     // Delete all clients and roles
-    await helper.Client.scan({}, {handler: c => c.clientId === 'root' ? null : c.remove()});
+    await helper.Client.scan({}, {handler: c => c.clientId === 'static/taskcluster/root' ? null : c.remove()});
     await helper.Roles.modify((roles) => roles.splice(0));
   };
   setup(cleanup);
   teardown(cleanup);
-
 
   test('ping', async () => {
     await helper.auth.ping();
