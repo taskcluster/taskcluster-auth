@@ -135,29 +135,37 @@ api.declare({
   description: [
     'Get a list of all clients.  With `prefix`, only clients for which',
     'it is a prefix of the clientId are returned.',
+    '',
+    'By default this end-point will try to return up to 1000 clients in one',
+    'request. But it **may return less, even none**.',
+    'It may also return a `continuationToken` even though there are no more',
+    'results. However, you can only be sure to have seen all results if you',
+    'keep calling `listClients` with the last `continuationToken` until you',
+    'get a result without a `continuationToken`.',
   ].join('\n'),
 }, async function(req, res) {
   let prefix = req.query.prefix;
   let continuationToken  = req.query.continuationToken || undefined;
-  let limit         = parseInt(req.query.limit || 10, 10);
+  let limit         = parseInt(req.query.limit || 1000, 10);
   let Client = this.Client;
   let resolver = this.resolver;
 
   let response = {clients: []};
 
-  while (true) {
-    let data = await Client.scan({}, {limit, continuation: continuationToken});
-    data.entries.forEach(client => {
-      if (!prefix || client.clientId.startsWith(prefix)) {
-        response.clients.push(client.json(resolver));
-      }
-    });
-    continuationToken = data.continuation || undefined;
-    if (!_.isEmpty(response.clients) || !continuationToken) {
-      break;
-    }
+  let opts = {limit};
+  if (req.query.continuationToken) {
+    opts.continuation = req.query.continuationToken;
   }
-  response.continuationToken = continuationToken;
+  let data = await Client.scan({}, opts);
+  data.entries.forEach(client => {
+    if (!prefix || client.clientId.startsWith(prefix)) {
+      response.clients.push(client.json(resolver));
+    }
+  });
+  if (data.continuation) {
+    response.continuationToken = data.continuation;
+  }
+
   res.reply(response);
 });
 
