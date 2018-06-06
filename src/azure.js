@@ -1,6 +1,6 @@
 var _           = require('lodash');
 var azure       = require('fast-azure-storage');
-var api         = require('./v1');
+var builder     = require('./v1');
 
 // keyed by account/tableName, the last time createTable was called for the
 // given table.  This is used to avoid lots of redundant calls to createTable
@@ -9,12 +9,12 @@ var tableLastCreated = {};
 // Similar for containers
 var containerLastCreated = {};
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/azure/accounts',
   name:       'azureAccounts',
   input:      undefined,
-  output:     'azure-account-list-response.json#',
+  output:     'azure-account-list-response.yml',
   stability:  'stable',
   scopes:     'auth:azure-table:list-accounts',
   title:      'List Accounts Managed by Auth',
@@ -25,7 +25,7 @@ api.declare({
   return res.reply({accounts: _.keys(this.azureAccounts)});
 });
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/azure/:account/tables',
   name:       'azureTables',
@@ -33,7 +33,7 @@ api.declare({
     continuationToken: /^[A-Za-z][A-Za-z0-9]{2,62}$/,
   },
   input:      undefined,
-  output:     'azure-table-list-response.json#',
+  output:     'azure-table-list-response.yml',
   stability:  'stable',
   scopes:     'auth:azure-table:list-tables:<account>',
   title:      'List Tables in an Account Managed by Auth',
@@ -59,12 +59,12 @@ api.declare({
   return res.reply(data);
 });
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/azure/:account/table/:table/:level',
   name:       'azureTableSAS',
   input:      undefined,
-  output:     'azure-table-access-response.json#',
+  output:     'azure-table-access-response.yml',
   stability:  'stable',
   scopes: {
     if: 'levelIsReadOnly',
@@ -147,7 +147,7 @@ api.declare({
   });
 });
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/azure/:account/containers',
   name:       'azureContainers',
@@ -155,7 +155,7 @@ api.declare({
     continuationToken: /^[A-Za-z][A-Za-z0-9]{2,62}$/,
   },
   input:      undefined,
-  output:     'azure-container-list-response.json#',
+  output:     'azure-container-list-response.yml',
   stability:  'stable',
   scopes:     'auth:azure-container:list-containers:<account>',
   title:      'List containers in an Account Managed by Auth',
@@ -179,12 +179,12 @@ api.declare({
   return res.reply(data);
 });
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/azure/:account/containers/:container/:level',
   name:       'azureContainerSAS',
   input:      undefined,
-  output:     'azure-container-response.json#',
+  output:     'azure-container-response.yml',
   stability:  'stable',
   scopes: {
     if: 'levelIsReadOnly',

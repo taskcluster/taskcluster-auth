@@ -27,7 +27,7 @@ myapi.declare({
   });
 });
 
-module.exports = async ({authBaseUrl, rootAccessToken}) => {
+module.exports = async ({rootAccessToken}) => {
   // Create application
   let serverApp = App({
     port:           PORT,
@@ -39,7 +39,6 @@ module.exports = async ({authBaseUrl, rootAccessToken}) => {
 
   // Create router for the API
   let router = myapi.router({
-    authBaseUrl,
     validator: await Validate({
       prefix: 'auth/v1',
     }),

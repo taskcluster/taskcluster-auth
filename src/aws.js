@@ -1,11 +1,11 @@
-var api = require('./v1');
+var builder = require('./v1');
 
-api.declare({
+builder.declare({
   method:     'get',
   route:      '/aws/s3/:level/:bucket/:prefix(*)',
   name:       'awsS3Credentials',
   input:      undefined,
-  output:     'aws-s3-credentials-response.json#',
+  output:     'aws-s3-credentials-response.yml',
   query: {
     format:   /iam-role-compat/,
   },

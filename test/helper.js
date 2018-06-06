@@ -161,7 +161,6 @@ mocha.before(async () => {
     Client:     TestClient,
     client:     testClient,
   } = await testserver({
-    authBaseUrl: helper.baseUrl,
     rootAccessToken: helper.rootAccessToken,
   });
 

@@ -1,4 +1,6 @@
 defaults:
+  taskcluster:
+    rootUrl:                  !env TASKCLUSTER_ROOT_URL
   app:
     # Azure table for the client table
     clientTableName:          Clients
@@ -6,19 +8,17 @@ defaults:
     # Azure blob container for the role table
     rolesContainerName:       auth-default-roles
 
-    # Key for signing in base.Entity (sufficiently random string required)
-    tableSigningKey:          !env TABLE_SIGNING_KEY
-    # Key for data encryption in base.Entity (32 random bytes as base64)
-    tableCryptoKey:           !env TABLE_CRYPTO_KEY
-
     # Publish references and schemas
     publishMetaData:          !env:bool PUBLISH_METADATA
 
-    # Exchange prefix for exchanges declared
-    exchangePrefix:           v1/
-
     # Name of component in statistics
     statsComponent:           auth
+
+    # Key for signing in base.Entity (sufficiently random string required)
+    tableSigningKey:          !env AZURE_SIGNING_KEY
+
+    # Key for data encryption in base.Entity (32 random bytes as base64)
+    tableCryptoKey:           !env AZURE_CRYPTO_KEY
 
     # Static clients, these clients are built-in from start, and can't be
     # modified or deleted at runtime. Useful for granting clientIds to other
@@ -81,8 +81,6 @@ defaults:
     enable:                     !env:bool MONITORING_ENABLE
 
   server:
-    # Public URL from which the server can be accessed (used for persona)
-    publicUrl:                https://auth.taskcluster.net
 
     # Port to listen for requests on
     port:                     !env:number PORT
@@ -98,14 +96,15 @@ defaults:
 
   azure:
     # Azure table storage account name
-    accountName:              !env AZURE_ACCOUNT_NAME
-
+    accountId:                !env AZURE_ACCOUNT
     # Azure table storage account key
-    accountKey:               !env AZURE_ACCOUNT_KEY
+    accessKey:               !env AZURE_ACCOUNT_KEY
 
   pulse:
     username:                 !env PULSE_USERNAME
     password:                 !env PULSE_PASSWORD
+    hostname:                 !env PULSE_HOSTNAME
+    vhost:                    !env PULSE_VHOST
 
   # AWS SDK configuration for delegation of S3 access and publication of
   # schemas and references
@@ -160,7 +159,6 @@ test:
   test:
     testBucket:               !env TEST_BUCKET
   server:
-    publicUrl:                http://localhost:60551
     forceSSL:                 false
     port:                     60551
     env:                      development
