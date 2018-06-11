@@ -26,14 +26,7 @@ defaults:
     # Each entry must have: clientId, accessToken, description, scopes
     # where clientId MUST start with 'static/', by convention these namespaced:
     #    static/<project>/<name>
-    staticClients:
-      # Must have clientId starting with "static/"
-    - clientId:     static/taskcluster/root
-      accessToken:  !env ROOT_ACCESS_TOKEN
-      description: |
-        Root client used for creating other clients (bootstrapping).
-      scopes:
-        - '*'
+    staticClients: !env:json STATIC_CLIENTS
 
     # Accounts that auth can delegate access to, as JSON
     azureAccounts:            !env:json AZURE_ACCOUNTS
@@ -122,8 +115,7 @@ production:
     clientTableName:          Clients
     rolesContainerName:       auth-production-roles
   server:
-    forceSSL:                 true
-    trustProxy:               true
+    forceHSTS:                true
     env:                      'production'
     development:              false
 test:

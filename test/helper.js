@@ -1,22 +1,92 @@
-var assert      = require('assert');
-var Promise     = require('promise');
-var path        = require('path');
-var _           = require('lodash');
-var testing     = require('taskcluster-lib-testing');
-var data        = require('../src/data');
-var v1          = require('../src/v1');
-var taskcluster = require('taskcluster-client');
-var mocha       = require('mocha');
-var serverLoad  = require('../src/main');
-var exchanges   = require('../src/exchanges');
-var testserver  = require('./testserver');
-var slugid      = require('slugid');
-var Config      = require('typed-env-config');
-var azure       = require('fast-azure-storage');
-var containers  = require('../src/containers');
-var uuid        = require('uuid');
-var Exchanges = require('pulse-publisher');
+const assert = require('assert');
+const Promise = require('promise');
+const path = require('path');
+const _ = require('lodash');
+const data = require('../src/data');
+const v1 = require('../src/v1');
+const taskcluster = require('taskcluster-client');
+const mocha = require('mocha');
+const load = require('../src/main');
+const exchanges = require('../src/exchanges');
+const testserver = require('./testserver');
+const slugid = require('slugid');
+const Config = require('typed-env-config');
+const azure = require('fast-azure-storage');
+const containers = require('../src/containers');
+const uuid = require('uuid');
+const Exchanges = require('pulse-publisher');
+const {fakeauth, stickyLoader, Secrets} = require('taskcluster-lib-testing');
 
+
+exports.load = stickyLoader(load);
+
+suiteSetup(async function() {
+  exports.load.inject('profile', 'test');
+  exports.load.inject('process', 'test');
+});
+
+/**
+ * Set up an API server.  Call this after withEntities, so the server
+ * uses the same entities classes.
+ *
+ * This also sets up helper.apiClient as a client of the service API.
+ */
+exports.withServers = (mock, skipping) => {
+  let webServer; // This is the auth service running under test
+  let testServer; // This is a demo service that is used to test things
+
+
+  // AUAHUTILUSEHGLUSHEG! We run two services in these tests. How can we do
+  // this with a single rootUrl? We'll need to make a weird load balancer thing
+  // for testing maybe???
+
+  suiteSetup(async function() {
+    if (skipping()) {
+      return;
+    }
+    const cfg = await exports.load('cfg');
+
+    // even if we are using a "real" rootUrl for access to Azure, we use
+    // a local rootUrl to test the API, including mocking auth on that
+    // rootUrl.
+    const rootUrl = 'http://localhost:60551';
+    exports.load.cfg('taskcluster.rootUrl', rootUrl);
+
+    fakeauth.start({'test-client': ['*']}, {rootUrl});
+
+    const GithubClient = taskcluster.createClient(builder.reference());
+
+    exports.apiClient = new GithubClient({
+      credentials: {clientId: 'test-client', accessToken: 'unused'},
+      rootUrl,
+    });
+
+    webServer = await exports.load('server');
+  });
+
+  suiteTeardown(async function() {
+    if (skipping()) {
+      return;
+    }
+    if (webServer) {
+      await webServer.terminate();
+      webServer = null;
+    }
+    fakeauth.stop();
+  });
+};
+
+
+
+
+
+
+
+
+
+
+
+/**
 // Load configuration
 var cfg = Config({profile: 'test'});
 
@@ -108,13 +178,12 @@ mocha.before(async () => {
   helper.load = serverLoad;
 
   // if we don't have an azure account/key, use the inmemory version
-  if (!cfg.azure || !cfg.azure.accountName) {
+  if (!cfg.azure || !cfg.azure.accountId) {
     let signingKey = cfg.app.tableSigningKey;
     let cryptoKey = cfg.app.tableCryptoKey;
     helper.Client = overwrites['Client'] = data.Client.setup({
-      table: 'Client',
-      account: 'inMemory',
-      credentials: null,
+      tableName: 'Client',
+      credentials: 'inMemory',
       cryptoKey,
       signingKey,
     });
@@ -212,3 +281,4 @@ mocha.after(async () => {
   }
 
 });
+**/

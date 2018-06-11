@@ -78,11 +78,11 @@ const load = Loader({
     requires: ['cfg', 'monitor'],
     setup: ({cfg, monitor}) =>
       data.Client.setup({
-        tableName:        cfg.app.clientTableName,
+        tableName:    cfg.app.clientTableName,
         credentials:  cfg.azure || {},
         signingKey:   cfg.app.tableSigningKey,
         cryptoKey:    cfg.app.tableCryptoKey,
-        monitor: monitor.prefix('table.clients'),
+        monitor:      monitor.prefix('table.clients'),
       }),
   },
 
