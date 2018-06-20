@@ -96,6 +96,9 @@ defaults:
     # Trust a forwarding proxy
     trustProxy:               !env:bool TRUST_PROXY
 
+    # TODO: pick a better name for this
+    proxyName:                !env PROXY_NAME
+
   azure:
     # Azure table storage account name
     accountName:              !env AZURE_ACCOUNT_NAME

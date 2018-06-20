@@ -218,7 +218,7 @@ let load = Loader({
       let serverApp = App(Object.assign({}, {docs}, cfg.server));
 
       serverApp.use(morganDebug('auth-request', 'dev'));
-      serverApp.use('/v1', api);
+      serverApp.use(`${cfg.server.proxyName || ''}/v1`, api);
 
       serverApp.get('/', (req, res) => {
         res.redirect(302, url.format({
