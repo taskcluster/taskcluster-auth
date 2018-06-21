@@ -407,7 +407,7 @@ suite('api (role logic)', function() {
   });
 
   const M = 5;  // depth
-  const K = 50; // multiplier
+  const K = 25; // multiplier
   test('test with depth = ' + M + ' x ' + K, {
     roles: _.flatten([
       _.flatten(_.range(K).map(k => {
