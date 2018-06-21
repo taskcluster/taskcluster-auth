@@ -18,6 +18,13 @@ let badcreds = {
 };
 
 suite('testAuthenticate', function() {
+  if (!helper.hasPulseCredentials()) {
+    setup(function() {
+      this.skip();
+    });
+    return;
+  }
+
   let testAuth = (name, {config, requiredScopes, clientScopes, errorCode}) => {
     test(name, async () => {
       let auth = new helper.Auth(config);

@@ -11,6 +11,7 @@ const PORT = 60321;
 let myapi = new API({
   title:        'Test API Server',
   description:  'API server for testing',
+  name:         'authtest',
 });
 
 myapi.declare({
@@ -33,6 +34,7 @@ module.exports = async ({authBaseUrl, rootAccessToken}) => {
     env:            'development',
     forceSSL:       false,
     trustProxy:     false,
+    rootDocsLink:   false,
   });
 
   // Create router for the API
@@ -55,7 +57,7 @@ module.exports = async ({authBaseUrl, rootAccessToken}) => {
   let myClient = new MyClient({
     baseUrl,
     credentials: {
-      clientId: 'root',
+      clientId: 'static/taskcluster/root',
       accessToken: rootAccessToken,
     },
   });

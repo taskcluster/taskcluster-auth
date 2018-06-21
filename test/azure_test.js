@@ -7,6 +7,12 @@ suite('azure table and blob (sas)', function() {
   var azure       = require('fast-azure-storage');
   var taskcluster = require('taskcluster-client');
 
+  if (!helper.hasPulseCredentials()) {
+    setup(function() {
+      this.skip();
+    });
+  }
+
   test('azureAccounts', function() {
     return helper.auth.azureAccounts(
     ).then(function(result) {
@@ -95,7 +101,7 @@ suite('azure table and blob (sas)', function() {
   });
 
   var rootCredentials = {
-    clientId: 'root',
+    clientId: 'static/taskcluster/root',
     accessToken: helper.rootAccessToken,
   };
 

@@ -37,7 +37,8 @@ let load = Loader({
     requires: ['cfg', 'sentryManager', 'profile', 'process'],
     setup: ({cfg, sentryManager, profile, process}) => {
       return Monitor({
-        project: 'taskcluster-auth',
+        project: cfg.monitoring.project || 'taskcluster-auth',
+        enable: cfg.monitoring.enable,
         process,
         mock: profile === 'test',
         aws: {credentials: _.pick(cfg.aws, ['accessKeyId', 'secretAccessKey']), region: cfg.aws.region},
@@ -99,6 +100,7 @@ let load = Loader({
     requires: ['cfg'],
     setup: ({cfg}) => Validate({
       prefix:  'auth/v1/',
+      publish:  cfg.app.publishMetaData,
       aws:      cfg.aws,
       bucket:   cfg.app.buckets.schemas,
     }),
@@ -111,6 +113,7 @@ let load = Loader({
       tier: 'platform',
       schemas: validator.schemas,
       bucket: cfg.app.buckets.docs,
+      publish: cfg.app.publishMetaData,
       references: [
         {
           name: 'api',
@@ -124,6 +127,11 @@ let load = Loader({
         },
       ],
     }),
+  },
+
+  writeDocs: {
+    requires: ['docs'],
+    setup: ({docs}) => docs.write({docsDir: process.env['DOCS_OUTPUT_DIR']}),
   },
 
   publisher: {
@@ -141,21 +149,26 @@ let load = Loader({
       }),
   },
 
+  connection: {
+    requires: ['cfg'],
+    setup: async ({cfg}) => {
+      return new taskcluster.PulseConnection(cfg.pulse);
+    },
+  },
+
   api: {
     requires: [
       'cfg', 'Client', 'Roles', 'validator', 'publisher', 'resolver',
-      'sentryManager', 'monitor',
+      'sentryManager', 'monitor', 'connection',
     ],
     setup: async ({
-      cfg, Client, Roles, validator, publisher, resolver, sentryManager, monitor,
+      cfg, Client, Roles, validator, publisher, resolver, sentryManager, monitor, connection,
     }) => {
       // Set up the Azure tables
       await Client.ensureTable();
 
-      // set up the root access token if necessary
-      if (cfg.app.rootAccessToken) {
-        await Client.ensureRootClient(cfg.app.rootAccessToken);
-      }
+      // set up the static clients
+      await Client.syncStaticClients(cfg.app.staticClients || []);
 
       // Load everything for resolver
       await resolver.setup({
@@ -164,7 +177,7 @@ let load = Loader({
           credentials:      cfg.pulse,
           exchangePrefix:   cfg.app.exchangePrefix,
         }),
-        connection: new taskcluster.PulseConnection(cfg.pulse),
+        connection: connection,
       });
 
       let signatureValidator = signaturevalidator.createSignatureValidator({
@@ -202,7 +215,7 @@ let load = Loader({
     requires: ['cfg', 'api', 'docs'],
     setup: async ({cfg, api, docs}) => {
       // Create app
-      let serverApp = App(cfg.server);
+      let serverApp = App(Object.assign({}, {docs}, cfg.server));
 
       serverApp.use(morganDebug('auth-request', 'dev'));
       serverApp.use('/v1', api);

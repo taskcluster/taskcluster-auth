@@ -10,7 +10,7 @@ suite('Remote Signature Validation', function() {
   var request     = require('superagent');
 
   var rootCredentials = {
-    clientId: 'root',
+    clientId: 'static/taskcluster/root',
     accessToken: helper.rootAccessToken,
   };
 
@@ -63,7 +63,7 @@ suite('Remote Signature Validation', function() {
     var myClient2 = new helper.TestClient({
       baseUrl: helper.testBaseUrl,
       credentials: {
-        clientId: 'root',
+        clientId: 'static/taskcluster/root',
         accessToken: 'nicetry',
       },
     });

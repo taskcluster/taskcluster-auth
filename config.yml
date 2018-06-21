@@ -20,9 +20,20 @@ defaults:
     # Name of component in statistics
     statsComponent:           auth
 
-    # root accessToken, if defined will cause root client to be
-    # automatically created when application is started
-    rootAccessToken:          !env ROOT_ACCESS_TOKEN
+    # Static clients, these clients are built-in from start, and can't be
+    # modified or deleted at runtime. Useful for granting clientIds to other
+    # services and boostrapping with a root client.
+    # Each entry must have: clientId, accessToken, description, scopes
+    # where clientId MUST start with 'static/', by convention these namespaced:
+    #    static/<project>/<name>
+    staticClients:
+      # Must have clientId starting with "static/"
+    - clientId:     static/taskcluster/root
+      accessToken:  !env ROOT_ACCESS_TOKEN
+      description: |
+        Root client used for creating other clients (bootstrapping).
+      scopes:
+        - '*'
 
     # Accounts that auth can delegate access to, as JSON
     azureAccounts:            !env:json AZURE_ACCOUNTS
@@ -33,10 +44,11 @@ defaults:
     maxLastUsedDelay:         '- 6 hours'
 
     # Sentry configuration
+    # The authToken _must_ have at least project:{read,write,admin} and org:read
     sentry:
       organization:             operations
       hostname:                 sentry.prod.mozaws.net
-      apiKey:                   !env SENTRY_API_KEY
+      authToken:                !env SENTRY_AUTH_TOKEN
       initialTeam:              taskcluster
       keyPrefix:                taskcluster-auth
 
@@ -63,6 +75,10 @@ defaults:
 
     # Name of a kinesis firehose stream to write audit logs to
     auditLog:                   !env AUDIT_LOG
+
+  monitoring:
+    project:                    !env MONITORING_PROJECT
+    enable:                     !env:bool MONITORING_ENABLE
 
   server:
     # Public URL from which the server can be accessed (used for persona)
@@ -113,18 +129,24 @@ production:
     development:              false
 test:
   app:
-    clientTableName:          TestClients28
+    clientTableName:          TestClients29
     rolesContainerName:       auth-testing-roles
     tableSigningKey:          not-a-secret-so-you-cant-guess-it
     tableCryptoKey:           AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     publishMetaData:          false
     statsComponent:           auth-tests
     # hardcoded into helper.js
-    rootAccessToken:          PKqZk1pIRgKnSLNXC86rKwl5Rp5Ki4SsKlZGEu2_kGNQ
+    staticClients:
+    - clientId:     static/taskcluster/root
+      accessToken:  -test-access-token-
+      description: |
+        Root client used for creating other clients (bootstrapping).
+      scopes:
+        - '*'
     # Special value for tests, as we don't want to wait forever
     maxLastUsedDelay:         '- 3 seconds'
     sentry:
-      apiKey:                   "no-key" # no-key skips tests
+      authToken:                "no-key" # no-key skips tests
       keyPrefix:                auth-test
     statsum:
       secret:                   'secret'
@@ -132,6 +154,8 @@ test:
     webhooktunnel:
       secret:                   'test-secret'
       proxyUrl:                 'ws://tcproxy.dev'
+  monitoring:
+    enable: false
   # Test bucket for STS credentials
   test:
     testBucket:               !env TEST_BUCKET

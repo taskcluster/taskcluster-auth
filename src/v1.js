@@ -20,6 +20,7 @@ const roleToJson = (role, context) => _.defaults(
 /** API end-point for version v1/ */
 const api = new API({
   title:      'Authentication API',
+  name:       'auth',
   description: [
     'Authentication related API end-points for Taskcluster and related',
     'services. These API end-points are of interest if you wish to:',
@@ -61,10 +62,11 @@ const api = new API({
     'Taskcluster credentials to grant access to a third-party service used',
     'by many Taskcluster components.',
   ].join('\n'),
+  name:         'auth',
   schemaPrefix: 'http://schemas.taskcluster.net/auth/v1/',
   params: {
     // Patterns for auth
-    clientId:   /^[A-Za-z0-9@\/:._-]+$/,
+    clientId:   /^[A-Za-z0-9!@/:.+|_-]+$/, // should match schemas/constants.yml, prefix below
     roleId:     /^[\x20-\x7e]+$/,
 
     // Patterns for Azure
@@ -79,7 +81,7 @@ const api = new API({
     // doesn't work well with HTTPS and virtual-style hosting.
     // Hence, we shouldn't encourage people to use them
     // Project for sentry (and other per project resources)
-    project:    /^[a-zA-Z0-9_-]{1,22}$/,
+    project:    /^[a-zA-Z0-9_-]{1,64}$/,
   },
   context: [
     // Instances of data tables
@@ -108,6 +110,9 @@ const api = new API({
 
     // A tc-lib-monitor for use beyond the lib-api level
     'monitor',
+
+    // The webhooktunnel config (with properties `secret` and `proxyUrl`)
+    'webhooktunnel',
   ],
 });
 
@@ -119,7 +124,9 @@ api.declare({
   method:     'get',
   route:      '/clients/',
   query: {
-    prefix: /^[A-Za-z0-9@/:._-]+$/,
+    prefix:  /^[A-Za-z0-9!@/:.+|_-]+$/, // should match clientId above
+    continuationToken: /./,
+    limit: /^[0-9]+$/,
   },
   name:       'listClients',
   input:      undefined,
@@ -129,22 +136,38 @@ api.declare({
   description: [
     'Get a list of all clients.  With `prefix`, only clients for which',
     'it is a prefix of the clientId are returned.',
+    '',
+    'By default this end-point will try to return up to 1000 clients in one',
+    'request. But it **may return less, even none**.',
+    'It may also return a `continuationToken` even though there are no more',
+    'results. However, you can only be sure to have seen all results if you',
+    'keep calling `listClients` with the last `continuationToken` until you',
+    'get a result without a `continuationToken`.',
   ].join('\n'),
 }, async function(req, res) {
   let prefix = req.query.prefix;
+  let continuationToken  = req.query.continuationToken || undefined;
+  let limit         = parseInt(req.query.limit || 1000, 10);
+  let Client = this.Client;
+  let resolver = this.resolver;
 
-  // Load all clients
-  // TODO: as we acquire more clients, perform the prefix filtering in Azure
-  let clients = [];
-  await this.Client.scan({}, {
-    handler: client => {
-      if (!prefix || client.clientId.startsWith(prefix)) {
-        clients.push(client.json(this.resolver));
-      }
-    },
+  let response = {clients: []};
+
+  let opts = {limit};
+  if (req.query.continuationToken) {
+    opts.continuation = req.query.continuationToken;
+  }
+  let data = await Client.scan({}, opts);
+  data.entries.forEach(client => {
+    if (!prefix || client.clientId.startsWith(prefix)) {
+      response.clients.push(client.json(resolver));
+    }
   });
+  if (data.continuation) {
+    response.continuationToken = data.continuation;
+  }
 
-  res.reply(clients);
+  res.reply(response);
 });
 
 /** Get client */
@@ -206,6 +229,15 @@ api.declare({
   let input     = req.body;
   let scopes    = input.scopes || [];
 
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
+
   // Check scopes
   await req.authorize({clientId, scopes});
 
@@ -235,6 +267,7 @@ api.declare({
 
     // If stored client different or older than 15 min we return 409
     let created = new Date(client.details.created).getTime();
+
     if (client.description !== input.description ||
         client.expires.getTime() !== new Date(input.expires).getTime() ||
         !_.isEqual(client.scopes, scopes) ||
@@ -286,6 +319,15 @@ api.declare({
 }, async function(req, res) {
   let clientId  = req.params.clientId;
   let input     = req.body;
+
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
 
   // Check scopes
   await req.authorize({clientId});
@@ -340,6 +382,15 @@ api.declare({
   let clientId  = req.params.clientId;
   let input     = req.body;
 
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
+
   // Load client
   let client = await this.Client.load({clientId}, true);
   if (!client) {
@@ -393,6 +444,15 @@ api.declare({
 }, async function(req, res) {
   let clientId  = req.params.clientId;
 
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
+
   // Check scopes
   await req.authorize({clientId});
 
@@ -435,6 +495,15 @@ api.declare({
 }, async function(req, res) {
   let clientId  = req.params.clientId;
 
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
+
   // Check scopes
   await req.authorize({clientId});
 
@@ -472,6 +541,15 @@ api.declare({
   ].join('\n'),
 }, async function(req, res) {
   let clientId  = req.params.clientId;
+
+  // Forbid changes to static clients
+  if (clientId.startsWith('static/')) {
+    return res.reportError('InputError',
+      'clientId "{{clientId}}" starts with "static/" which is reserved for statically' +
+      'configured clients. Contact your administrator to change static clients.',
+      {clientId},
+    );
+  }
 
   // Check scopes
   await req.authorize({clientId});

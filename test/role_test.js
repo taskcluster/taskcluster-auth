@@ -31,8 +31,6 @@ suite('api (roles)', function() {
   });
 
   test('createRole (normal)', async () => {
-    await helper.events.listenFor('e1', helper.authEvents.roleCreated());
-
     let role = await helper.auth.createRole('thing-id:' + clientId, {
       description: 'test role',
       scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-2'],
@@ -55,7 +53,7 @@ suite('api (roles)', function() {
     // Ensure that pulse messages comes, don't check the payload as we can't
     // be sure the tests aren't interfering with each other and I'm too lazy to
     // handle all messages.
-    await helper.events.waitFor('e1');
+    assert.deepEqual(helper.publisher.calls, [{method: 'roleCreated', roleId:'thing-id:' + clientId}]);
 
     let client = await helper.auth.client(clientId);
     assume(client.expandedScopes.sort()).deep.equals(
@@ -64,7 +62,6 @@ suite('api (roles)', function() {
   });
 
   test('createRole (prefix)', async () => {
-    await helper.events.listenFor('e1', helper.authEvents.roleCreated());
     let auth = new helper.Auth({
       credentials: {clientId, accessToken},
     });
@@ -75,7 +72,7 @@ suite('api (roles)', function() {
       scopes: ['dummy-scope-2'],
     });
 
-    await helper.events.waitFor('e1');
+    assert.deepEqual(helper.publisher.calls, [{method: 'roleCreated', roleId:roleId}]);
 
     assume(role.description).equals('test prefix role');
     assume(new Date(role.created).getTime()).is.atmost(Date.now());
@@ -133,8 +130,6 @@ suite('api (roles)', function() {
   });
 
   test('updateRole (add scope)', async () => {
-    await helper.events.listenFor('e1', helper.authEvents.roleUpdated());
-
     let r1 = await helper.auth.role('thing-id:' + clientId);
 
     await testing.sleep(100);
@@ -146,7 +141,7 @@ suite('api (roles)', function() {
     assume(new Date(r2.lastModified).getTime()).greaterThan(
       new Date(r1.lastModified).getTime()
     );
-    await helper.events.waitFor('e1');
+    assert.deepEqual(helper.publisher.calls, [{method: 'roleUpdated', roleId:'thing-id:' + clientId}]);
 
     let role = await helper.auth.role('thing-id:' + clientId);
     assume(role.expandedScopes.sort()).deep.equals([
@@ -159,8 +154,6 @@ suite('api (roles)', function() {
   });
 
   test('deleteRole', async () => {
-    await helper.events.listenFor('e1', helper.authEvents.roleDeleted());
-
     await helper.auth.deleteRole('thing-id:' + clientId);
     await helper.auth.deleteRole('thing-id:' + clientId);
     let roleId = 'thing-id:' + clientId.slice(0, 11) + '*';
@@ -171,7 +164,8 @@ suite('api (roles)', function() {
     }, err => assert(err.statusCode === 404, 'Expected 404'));
 
     // At least one of them should trigger this message
-    await helper.events.waitFor('e1');
+    assert.deepEqual(helper.publisher.calls, [{
+      method: 'roleDeleted', roleId:'thing-id:' + clientId}, {method: 'roleDeleted', roleId:roleId}]);
   });
 
   test('create a role introducing a parameter cycle', async () => {
@@ -218,7 +212,10 @@ suite('api (roles)', function() {
 
     setup(async function() {
       auth = new helper.Auth({
-        credentials: {clientId: 'root', accessToken: helper.rootAccessToken},
+        credentials: {
+          clientId: 'static/taskcluster/root',
+          accessToken: helper.rootAccessToken,
+        },
         authorizedScopes: [
           'auth:update-role:*',
           'scope:role-has:a',
@@ -226,7 +223,6 @@ suite('api (roles)', function() {
           'scope:caller-has:b*',
         ],
       });
-
       // clear stuff out
       await helper.Roles.modify((roles) => roles.splice(0));
 
