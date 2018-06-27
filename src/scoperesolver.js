@@ -70,6 +70,7 @@ class ScopeResolver extends events.EventEmitter {
    *
    * options:
    * {
+   *   rootUrl:             // a Taskcluster rootUrl
    *   Client:              // data.Client object
    *   Roles:               // data.Roles object
    *   connection:          // PulseConnection object
@@ -92,7 +93,7 @@ class ScopeResolver extends events.EventEmitter {
 
     // Create authEvents client
     var AuthEvents = taskcluster.createClient(this._options.exchangeReference);
-    var authEvents = new AuthEvents();
+    var authEvents = new AuthEvents({rootUrl: this._options.rootUrl});
 
     // Create PulseListeners
     this._clientListener = new taskcluster.PulseListener({

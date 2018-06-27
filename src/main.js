@@ -80,8 +80,8 @@ const load = Loader({
       data.Client.setup({
         tableName:    cfg.app.clientTableName,
         credentials:  cfg.azure || {},
-        signingKey:   cfg.app.tableSigningKey,
-        cryptoKey:    cfg.app.tableCryptoKey,
+        signingKey:   cfg.azure.signingKey,
+        cryptoKey:    cfg.azure.cryptoKey,
         monitor:      monitor.prefix('table.clients'),
       }),
   },
@@ -173,6 +173,7 @@ const load = Loader({
 
       // Load everything for resolver
       await resolver.setup({
+        rootUrl: cfg.taskcluster.rootUrl,
         Client, Roles,
         exchangeReference: exchanges.reference({
           credentials:      cfg.pulse,

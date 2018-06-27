@@ -332,7 +332,7 @@ var createSignatureValidator = function(options) {
           nonceFunc:    options.nonceManager,
         }, authenticated);
       } else {
-      // If there is no authorization header we'll attempt a login with bewit
+        // If there is no authorization header we'll attempt a login with bewit
         hawk.uri.authenticate({
           method:           req.method.toUpperCase(),
           url:              req.resource,
