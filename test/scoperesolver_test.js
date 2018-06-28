@@ -426,7 +426,7 @@ suite('scoperesolver', () => {
     }
 
     // Test with a snapshot of real roles, captured with
-    //   `curl https://auth.taskcluster.net/v1/roles`
+    //   `curl https://auth.taskcluster.net/v1/roles > test/roles.json`
     const realRoles = require('./roles');
     const testRealRoles = (scopes, expected) => {
       testResolver(`real roles with scopes ${scopes.join(', ')}`, {
@@ -453,6 +453,8 @@ suite('scoperesolver', () => {
       'queue:*',
       'scheduler:*',
       'secrets:*',
+      'in-tree:*',
+      'worker:*',
     ]);
 
     testRealRoles(['assume:repo:github.com/*']);
@@ -461,6 +463,7 @@ suite('scoperesolver', () => {
     testRealRoles(['assume:mozilla-group:team_taskcluster']);
     testRealRoles(['assume:moz-tree:level:3']);
 
+    // curl https://auth.taskcluster.net/v1/clients | jq -r '.clients' > test/clients.json
     const realClients = require('./clients');
     test('resolve all clients', () => {
       const resolver = time('setup', () => scopeResolver.buildResolver(realRoles));
