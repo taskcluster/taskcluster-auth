@@ -3,7 +3,6 @@ var assert      = require('assert');
 var APIBuilder  = require('taskcluster-lib-api');
 var scopeUtils  = require('taskcluster-lib-scopes');
 var slugid      = require('slugid');
-var Promise     = require('promise');
 var _           = require('lodash');
 var signaturevalidator = require('./signaturevalidator');
 let ScopeResolver      = require('./scoperesolver');
@@ -937,7 +936,7 @@ builder.declare({
     'and scopes as seen by the API method.',
   ].join('\n'),
 }, async function(req, res) {
-  await new Promise(next => API.remoteAuthentication({
+  await new Promise(next => APIBuilder.middleware.remoteAuthentication({
     signatureValidator: signaturevalidator.createSignatureValidator({
       clientLoader: async (clientId) => {
         if (clientId !== 'tester') {
@@ -951,11 +950,12 @@ builder.declare({
       },
       monitor: this.monitor,
     }),
-  }, {
-    route: '/test-authenticate',
-    scopes: {AllOf: [
-      {for: 'scope', in: 'requiredScopes', each: '<scope>'},
-    ]},
+    entry: {
+      route: '/test-authenticate',
+      scopes: {AllOf: [
+        {for: 'scope', in: 'requiredScopes', each: '<scope>'},
+      ]},
+    },
   })(req, res, next));
   await req.authorize({requiredScopes: req.body.requiredScopes || []});
   const [clientId, scopes] = await Promise.all([
@@ -990,7 +990,7 @@ builder.declare({
     'required scopes via query arguments.',
   ].join('\n'),
 }, async function(req, res) {
-  await new Promise(next => API.remoteAuthentication({
+  await new Promise(next => APIBuilder.middleware.remoteAuthentication({
     signatureValidator: signaturevalidator.createSignatureValidator({
       clientLoader: async (clientId) => {
         if (clientId !== 'tester') {
@@ -1004,11 +1004,12 @@ builder.declare({
       },
       monitor: this.monitor,
     }),
-  }, {
-    route: '/test-authenticate',
-    scopes: {AllOf: [
-      {for: 'scope', in: 'requiredScopes', each: '<scope>'},
-    ]},
+    entry: {
+      route: '/test-authenticate',
+      scopes: {AllOf: [
+        {for: 'scope', in: 'requiredScopes', each: '<scope>'},
+      ]},
+    },
   })(req, res, next));
   await req.authorize({requiredScopes: ['test:authenticate-get']});
   const [clientId, scopes] = await Promise.all([

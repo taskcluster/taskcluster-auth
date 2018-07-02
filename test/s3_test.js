@@ -1,19 +1,31 @@
-suite('aws S3 (STS)', () => {
-  var Promise     = require('promise');
-  var assert      = require('assert');
-  var slugid      = require('slugid');
-  var _           = require('lodash');
-  var aws         = require('aws-sdk');
-  var helper      = require('./helper');
-  var debug       = require('debug')('s3_test');
+const assert      = require('assert');
+const slugid      = require('slugid');
+const _           = require('lodash');
+const aws         = require('aws-sdk');
+const helper      = require('./helper');
+const debug       = require('debug')('s3_test');
 
-  var bucket = helper.cfg.test.testBucket;
+helper.secrets.mockSuite(helper.suiteName(__filename), ['aws'], function(mock, skipping) {
+  if (mock) {
+    return; // This is actually testing sts tokens and we are not going to mock those
+  }
+  // pulse/azure aren't under test, so we always mock them out
+  helper.withPulse('mock', skipping);
+  helper.withEntities('mock', skipping);
+  helper.withRoles('mock', skipping);
+  helper.withServers(mock, skipping);
+  helper.withCfg(mock, skipping);
+
+  let bucket;
+  setup(function() {
+    bucket = helper.cfg.test.testBucket;
+  });
 
   test('awsS3Credentials read-write folder1/folder2/', async () => {
     var id    = slugid.v4();
     var text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.auth.awsS3Credentials(
+    var result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/folder2/'
@@ -49,7 +61,7 @@ suite('aws S3 (STS)', () => {
     var id    = slugid.v4();
     var text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.auth.awsS3Credentials(
+    var result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       ''
@@ -84,7 +96,7 @@ suite('aws S3 (STS)', () => {
   test('awsS3Credentials w. folder1/ access denied for folder2/', async () => {
     var id = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.auth.awsS3Credentials(
+    var result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/'
@@ -111,7 +123,7 @@ suite('aws S3 (STS)', () => {
     var id    = slugid.v4();
     var text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.auth.awsS3Credentials(
+    var result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/'
@@ -125,7 +137,7 @@ suite('aws S3 (STS)', () => {
     }).promise();
 
     debug('### auth.awsS3Credentials read-only');
-    result = await helper.auth.awsS3Credentials(
+    result = await helper.apiClient.awsS3Credentials(
       'read-only',
       bucket,
       'folder1/'
@@ -155,7 +167,7 @@ suite('aws S3 (STS)', () => {
     let id    = slugid.v4();
     let text  = slugid.v4();
     debug('### auth.awsS3Credentials w. format=iam-role-compat');
-    let result = await helper.auth.awsS3Credentials(
+    let result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       '', {

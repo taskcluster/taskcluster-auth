@@ -1,4 +1,3 @@
-let Sentry      = require('sentry-api').Client;
 let _           = require('lodash');
 let taskcluster = require('taskcluster-client');
 let debug       = require('debug')('app:sentry');
@@ -36,8 +35,7 @@ class SentryManager {
    * Options:
    * {
    *   organization:   '...',  // Sentry organization
-   *   hostname:       'app.getsentry.com',
-   *   authToken:      '...',  // Organization auth token with at least project:{read,write,admin} and org:read
+   *   sentryClient:   require('sentry-api').Client,  // An instance of a client for sentry
    *   initialTeam:    '...',  // Initial team for new projects
    *   keyPrefix:      '...',  // Prefix for keys
    * }
@@ -45,13 +43,10 @@ class SentryManager {
   constructor(options) {
     assert(options);
     assert(options.organization);
-    assert(options.hostname);
-    assert(options.authToken);
+    assert(options.sentryClient);
     assert(options.initialTeam);
     assert(options.keyPrefix);
-    this._sentry = new Sentry(`https://${options.hostname}`, {
-      token: options.authToken,
-    });
+    this._sentry = options.sentryClient;
     this._organization = options.organization;
     this._initialTeam = options.initialTeam;
     this._projectDSNCache = {};

@@ -1,4 +1,3 @@
-const Promise     = require('promise');
 const assert      = require('assert');
 const debug       = require('debug')('test:client');
 const helper      = require('./helper');

@@ -10,13 +10,13 @@ const containers         = require('./containers');
 const builder            = require('./v1');
 const path               = require('path');
 const debug              = require('debug')('server');
-const Promise            = require('promise');
 const AWS                = require('aws-sdk');
 const exchanges          = require('./exchanges');
 const ScopeResolver      = require('./scoperesolver');
 const signaturevalidator = require('./signaturevalidator');
 const taskcluster        = require('taskcluster-client');
 const url                = require('url');
+const SentryClient       = require('sentry-api').Client;
 const SentryManager      = require('./sentrymanager');
 const Statsum            = require('statsum');
 const _                  = require('lodash');
@@ -29,9 +29,19 @@ const load = Loader({
     setup: ({profile}) => Config({profile}),
   },
 
-  sentryManager: {
+  sentryClient: {
     requires: ['cfg'],
-    setup: ({cfg}) => new SentryManager(cfg.app.sentry),
+    setup: ({cfg}) => new SentryClient(`https://${cfg.app.sentry.hostname}`, {
+      token: cfg.app.sentry.authToken,
+    }),
+  },
+
+  sentryManager: {
+    requires: ['cfg', 'sentryClient'],
+    setup: ({cfg, sentryClient}) => new SentryManager({
+      sentryClient,
+      ...cfg.app.sentry,
+    }),
   },
 
   monitor: {

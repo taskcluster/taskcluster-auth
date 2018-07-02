@@ -1,6 +1,5 @@
 var debug         = require('debug')('queue:bin:load-test');
 var base          = require('taskcluster-base');
-var Promise       = require('promise');
 var _             = require('lodash');
 var v1            = require('../src/v1');
 var https         = require('https');

@@ -1,18 +1,27 @@
-suite('Remote Signature Validation', function() {
-  var Promise     = require('promise');
-  var assert      = require('assert');
-  var debug       = require('debug')('auth:test:api');
-  var helper      = require('./helper');
-  var slugid      = require('slugid');
-  var _           = require('lodash');
-  var assume      = require('assume');
-  var taskcluster = require('taskcluster-client');
-  var request     = require('superagent');
+const assert      = require('assert');
+const debug       = require('debug')('auth:test:api');
+const helper      = require('./helper');
+const slugid      = require('slugid');
+const _           = require('lodash');
+const assume      = require('assume');
+const taskcluster = require('taskcluster-client');
+const request     = require('superagent');
 
-  var rootCredentials = {
-    clientId: 'static/taskcluster/root',
-    accessToken: helper.rootAccessToken,
-  };
+helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock, skipping) {
+  helper.withPulse(mock, skipping);
+  helper.withEntities(mock, skipping);
+  helper.withRoles(mock, skipping);
+  helper.withServers(mock, skipping);
+
+  let rootCredentials;
+
+  suiteSetup(function() {
+    helper.setupScopes(['*']);
+    rootCredentials = {
+      clientId: 'static/taskcluster/root',
+      accessToken: helper.rootAccessToken,
+    };
+  });
 
   test('header auth (root creds)', async () => {
     var result = await helper.testClient.resource();
@@ -21,7 +30,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (new client)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials: rootCredentials,
     });
     await myClient2.resource();
@@ -36,7 +45,7 @@ suite('Remote Signature Validation', function() {
   });
 
   test('header auth (no creds)', async () => {
-    var myClient2 = new helper.TestClient({baseUrl: helper.testBaseUrl});
+    var myClient2 = new helper.TestClient({rootUrl: helper.rootUrl});
     await myClient2.resource().then(() => {
       assert(false, 'expected an error!');
     }, err => {
@@ -46,7 +55,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (wrong creds)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials: {
         clientId: 'wrong',
         accessToken: 'nicetry',
@@ -61,7 +70,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (wrong accessToken)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials: {
         clientId: 'static/taskcluster/root',
         accessToken: 'nicetry',
@@ -76,7 +85,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (temp creds)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials:  taskcluster.createTemporaryCredentials({
         expiry:       taskcluster.fromNow('10 min'),
         scopes:       ['myapi:*'],
@@ -89,7 +98,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (temp creds - wrong scope)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials:  taskcluster.createTemporaryCredentials({
         expiry:       taskcluster.fromNow('10 min'),
         scopes:       ['myapi--'],
@@ -105,7 +114,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (temp creds + authorizedScopes)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials:  taskcluster.createTemporaryCredentials({
         expiry:       taskcluster.fromNow('10 min'),
         scopes:       ['myapi:*'],
@@ -119,7 +128,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (temp creds + invalid authorizedScopes)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials:  taskcluster.createTemporaryCredentials({
         expiry:       taskcluster.fromNow('10 min'),
         scopes:       ['myapi:*'],
@@ -136,7 +145,7 @@ suite('Remote Signature Validation', function() {
 
   test('header auth (temp creds + overstep authorizedScopes)', async () => {
     var myClient2 = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials:  taskcluster.createTemporaryCredentials({
         expiry:       taskcluster.fromNow('10 min'),
         scopes:       ['myapi:'],
@@ -153,7 +162,7 @@ suite('Remote Signature Validation', function() {
 
   test('auth with non-root user', async () => {
     var clientId = slugid.v4();
-    var result = await helper.auth.createClient(clientId, {
+    var result = await helper.apiClient.createClient(clientId, {
       expires:      new Date(3000, 1, 1), // far out in the future
       description:  'Client used by automatic tests, file a bug and delete if' +
                     ' you ever see this client!',
@@ -161,7 +170,7 @@ suite('Remote Signature Validation', function() {
     });
 
     var myClient = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials: {
         clientId:     result.clientId,
         accessToken:  result.accessToken,
@@ -172,7 +181,7 @@ suite('Remote Signature Validation', function() {
 
   test('auth with non-root user (expired)', async () => {
     var clientId = slugid.v4();
-    var result = await helper.auth.createClient(clientId, {
+    var result = await helper.apiClient.createClient(clientId, {
       expires:      new Date(1998, 1, 1), // far back in the past
       description:  'Client used by automatic tests, file a bug and delete if' +
                     ' you ever see this client!',
@@ -180,7 +189,7 @@ suite('Remote Signature Validation', function() {
     });
 
     var myClient = new helper.TestClient({
-      baseUrl: helper.testBaseUrl,
+      rootUrl: helper.rootUrl,
       credentials: {
         clientId:     result.clientId,
         accessToken:  result.accessToken,

@@ -33,11 +33,11 @@ defaults:
     # Sentry configuration
     # The authToken _must_ have at least project:{read,write,admin} and org:read
     sentry:
-      organization:             operations
-      hostname:                 sentry.prod.mozaws.net
+      organization:             !env SENTRY_ORGANIZATION
+      hostname:                 !env SENTRY_HOST
       authToken:                !env SENTRY_AUTH_TOKEN
-      initialTeam:              taskcluster
-      keyPrefix:                taskcluster-auth
+      initialTeam:              !env SENTRY_TEAM
+      keyPrefix:                !env SENTRY_KEY_PREFIX
 
     # Delay before expiring sentry keys, this should be negative!
     sentryExpirationDelay:      '- 15 minutes'
@@ -115,6 +115,11 @@ production:
   app:
     clientTableName:          Clients
     rolesContainerName:       auth-production-roles
+    sentry:
+      organization:           operations
+      hostname:               sentry.prod.mozaws.net
+      initialTeam:            taskcluster
+      keyPrefix:              taskcluster-auth
   server:
     forceHSTS:                true
     env:                      'production'
@@ -136,7 +141,10 @@ test:
     # Special value for tests, as we don't want to wait forever
     maxLastUsedDelay:         '- 3 seconds'
     sentry:
-      authToken:                "no-key" # no-key skips tests
+      organization:             operations
+      hostname:                 sentry.prod.mozaws.net
+      authToken:                whatever
+      initialTeam:              taskcluster
       keyPrefix:                auth-test
     statsum:
       secret:                   'secret'

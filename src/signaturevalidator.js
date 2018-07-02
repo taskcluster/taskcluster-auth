@@ -1,6 +1,4 @@
-
 var debug         = require('debug')('auth:signaturevalidator');
-var Promise       = require('promise');
 var hawk          = require('hawk');
 var assert        = require('assert');
 var _             = require('lodash');

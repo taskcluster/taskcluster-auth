@@ -44,14 +44,16 @@
     "taskcluster-lib-loader": "^10.0.0",
     "taskcluster-lib-monitor": "^10.0.0",
     "taskcluster-lib-scopes": "^10.0.0",
-    "taskcluster-lib-testing": "^11.3.0",
     "taskcluster-lib-validate": "^11.0.1",
     "typed-env-config": "^1.1.0"
   },
   "devDependencies": {
     "eslint-config-taskcluster": "^3.1.0",
     "http-proxy": "^1.17.0",
-    "mocha": "^4.0.1"
+    "mocha": "^4.0.1",
+    "mock-aws-s3": "^3.0.0",
+    "taskcluster-lib-testing": "^11.3.0",
+    "temporary": "^0.0.8"
   },
   "engine-strict": true,
   "engines": {

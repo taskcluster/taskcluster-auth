@@ -1,17 +1,17 @@
-suite('signature validation', function() {
-  var Promise      = require('promise');
-  var assert       = require('assert');
-  var mocha        = require('mocha');
-  var debug        = require('debug')('test:signaturevalidator');
-  var hawk         = require('hawk');
-  var _            = require('lodash');
-  var assume       = require('assume');
-  var slugid       = require('slugid');
-  var crypto       = require('crypto');
-  var taskcluster  = require('taskcluster-client');
-  var sigvalidator = require('../src/signaturevalidator');
-  var Monitor      = require('taskcluster-lib-monitor');
+const helper       = require('./helper');
+const assert       = require('assert');
+const mocha        = require('mocha');
+const debug        = require('debug')('test:signaturevalidator');
+const hawk         = require('hawk');
+const _            = require('lodash');
+const assume       = require('assume');
+const slugid       = require('slugid');
+const crypto       = require('crypto');
+const taskcluster  = require('taskcluster-client');
+const sigvalidator = require('../src/signaturevalidator');
+const Monitor      = require('taskcluster-lib-monitor');
 
+suite(helper.suiteName(__filename), function() {
   var one_hour = taskcluster.fromNow('1 hour');
   var two_hours = taskcluster.fromNow('2 hour');
   var three_hours = taskcluster.fromNow('3 hour');
@@ -32,7 +32,7 @@ suite('signature validation', function() {
     },
   };
 
-  before(async function() {
+  suiteSetup(async function() {
     validator = sigvalidator.createSignatureValidator({
       clientLoader: async clientId => {
         if (!clients[clientId]) {
@@ -41,7 +41,7 @@ suite('signature validation', function() {
         return clients[clientId];
       },
       expandScopes: scopes => scopes,
-      monitor: await Monitor({project: 'foo', mock: true}),
+      monitor: await Monitor({projectName: 'foo', mock: true}),
     });
   });
 

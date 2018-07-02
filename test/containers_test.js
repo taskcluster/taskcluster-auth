@@ -10,30 +10,24 @@ const sorted = (arr) => {
   return arr;
 };
 
-suite('containers', function() {
+helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock, skipping) {
+  if (mock) {
+    return; // This test file only works on real things apparently
+  }
   const containerName = `auth-test-${uuid.v4()}`;
 
   let credentials;
-  if (helper.cfg.azure && helper.cfg.azure.accountName) {
-    credentials = helper.cfg.azure;
-  }
 
   let roles;
   suiteSetup(async function() {
-    if (credentials) {
+    if (!mock && !skipping()) {
+      credentials = helper.secrets.get('azure');
       roles = new containers.Roles({
         containerName,
         credentials,
       });
 
       await roles.setup();
-    }
-  });
-
-  setup(function() {
-    // can't run these tests without real azure credentials
-    if (!credentials) {
-      this.skip();
     }
   });
 

@@ -1,6 +1,5 @@
 const debug = require('debug')('test-helper');
 const assert = require('assert');
-const Promise = require('promise');
 const http = require('http');
 const httpProxy = require('http-proxy');
 const path = require('path');
@@ -14,6 +13,8 @@ const exchanges = require('../src/exchanges');
 const slugid = require('slugid');
 const Config = require('typed-env-config');
 const azure = require('fast-azure-storage');
+const temporary = require('temporary');
+const mockAwsS3 = require('mock-aws-s3');
 const containers = require('../src/containers');
 const uuid = require('uuid');
 const Builder = require('taskcluster-lib-api');
@@ -43,8 +44,16 @@ exports.secrets = new Secrets({
       {env: 'AZURE_ACCOUNT_ID', cfg: 'azure.accountId', name: 'accountId'},
       {env: 'AZURE_ACCOUNT_KEY', cfg: 'azure.accountKey', name: 'accountKey'},
     ],
+    aws: [
+      {env: 'AWS_ACCESS_KEY_ID', cfg: 'aws.accessKeyId'},
+      {env: 'AWS_SECRET_ACCESS_KEY', cfg: 'aws.secretAccessKey'},
+    ],
     taskcluster: [
       {env: 'TASKCLUSTER_ROOT_URL', cfg: 'taskcluster.rootUrl', name: 'rootUrl', mock: exports.rootUrl},
+    ],
+    sentry: [
+      {env: 'SENTRY_AUTH_TOKEN', cfg: 'sentry.authToken'},
+      {env: 'SENTRY_HOSTNAME', cfg: 'sentry.hostname'},
     ],
   },
   load: exports.load,
@@ -100,7 +109,7 @@ exports.withEntities = (mock, skipping) => {
     await Promise.all(tables.map(async tbl => {
       await exports[tbl.name].scan({}, {handler: e => {
         // This is assumed to exist accross tests in many places
-        if (tbl.name === 'Client' && e.clientId === 'static/taskcluster/root') {
+        if (tbl.name === 'Client' && e.clientId.startsWith('static/')) {
           return;
         }
         e.remove();
@@ -169,6 +178,65 @@ exports.withRoles = (mock, skipping) => {
   };
   setup(cleanup);
   suiteTeardown(cleanup);
+};
+
+/**
+ * Setup a fake sentry
+ */
+exports.withSentry = (mock, skipping) => {
+  const sentryOrgs = {};
+  suiteSetup(async function() {
+    if (skipping()) {
+      return;
+    }
+
+    const sentryFake = {
+      organizations: {
+        projects: org => Object.values(sentryOrgs[org]),
+      },
+      teams: {
+        createProject: (org, team, info) => {
+          if (!sentryOrgs[org]) {
+            sentryOrgs[org] = {};
+          }
+          sentryOrgs[org][info.slug] = {
+            slug: info.slug,
+            keys: {},
+          };
+        },
+      },
+      projects: {
+        keys: (org, project) => Object.values(sentryOrgs[org][project].keys),
+        createKey: (org, project, extra) => {
+          const key = {
+            id: slugid.v4(),
+            dsn: {
+              secret: 'https://foobar.com/',
+              public: 'https://bazbing.net/',
+            },
+            label: extra.name,
+          };
+          sentryOrgs[org][project].keys[key.id] = key;
+          return key;
+        },
+        deleteKey: (org, project, key) => {
+          delete sentryOrgs[org][project].keys[key];
+        },
+      },
+    };
+
+    if (mock) {
+      exports.load.inject('sentryClient', sentryFake);
+    }
+  });
+
+  suiteTeardown(async () => {
+    if (skipping()) {
+      return;
+    }
+    if (mock) {
+    }
+  });
 };
 
 /**
@@ -253,6 +321,7 @@ exports.withServers = (mock, skipping) => {
 
   let webServer;
   let testServer;
+  let proxier;
 
   suiteSetup(async function() {
     if (skipping()) {
@@ -312,7 +381,7 @@ exports.withServers = (mock, skipping) => {
     // and sends requests to either of the services based on path.
 
     const proxy = httpProxy.createProxyServer({});
-    const proxier = http.createServer(function(req, res) {
+    proxier = http.createServer(function(req, res) {
       if (req.url.startsWith('/api/auth/')) {
         proxy.web(req, res, {target: 'http://localhost:60552'});
       } else if (req.url.startsWith(`/api/${testServiceName}/`)) {
@@ -325,7 +394,8 @@ exports.withServers = (mock, skipping) => {
 
   });
 
-  beforeEach(() => {
+  // TODO: Is this necessary???
+  setup(() => {
     exports.setupScopes();
   });
 
@@ -341,6 +411,10 @@ exports.withServers = (mock, skipping) => {
     if (testServer) {
       await testServer.terminate();
       testServer = null;
+    }
+    if (proxier) {
+      proxier.close();
+      proxier = null;
     }
   });
 };
