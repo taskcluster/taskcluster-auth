@@ -7,13 +7,10 @@ const assume      = require('assume');
 const testing     = require('taskcluster-lib-testing');
 const taskcluster = require('taskcluster-client');
 
-// TODO: This is a superfund site...
-/*
-
 helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
-  helper.withEntities(mock, skipping);
-  helper.withRoles(mock, skipping);
+  helper.withEntities(mock, skipping, {orderedTests: true});
+  helper.withRoles(mock, skipping, {orderedTests: true});
   helper.withServers(mock, skipping);
 
   let sorted = (arr) => {
@@ -24,7 +21,10 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
   // Setup a clientId we can play with
   let clientId, accessToken;
   clientId = slugid.v4();
-  setup(async () => {
+  suiteSetup(async function() {
+    if (skipping()) {
+      this.skip();
+    }
     let client = await helper.apiClient.createClient(clientId, {
       expires: taskcluster.fromNowJSON('1 day'),
       description: 'test client...',
@@ -142,7 +142,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
     assume(new Date(r2.lastModified).getTime()).greaterThan(
       new Date(r1.lastModified).getTime()
     );
-    assert.deepEqual(helper.publisher.calls, [{method: 'roleUpdated', roleId:'thing-id:' + clientId}]);
+    helper.checkNextMessage('role-updated', m => assert.equal(m.payload.roleId, `thing-id:${clientId}`));
 
     let role = await helper.apiClient.role('thing-id:' + clientId);
     assume(role.expandedScopes.sort()).deep.equals([
@@ -165,8 +165,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
     }, err => assert(err.statusCode === 404, 'Expected 404'));
 
     // At least one of them should trigger this message
-    assert.deepEqual(helper.publisher.calls, [{
-      method: 'roleDeleted', roleId:'thing-id:' + clientId}, {method: 'roleDeleted', roleId:roleId}]);
+    helper.checkNextMessage('role-deleted', m => assert.equal(m.payload.roleId, `thing-id:${clientId}`));
   });
 
   test('create a role introducing a parameter cycle', async () => {
@@ -211,8 +210,15 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
     let roleId2 = `sub-thing:${clientId}`;
     let auth;
 
+    suiteSetup(function() {
+      if (skipping()) {
+        this.skip();
+      }
+    });
+
     setup(async function() {
       auth = new helper.AuthClient({
+        rootUrl: helper.rootUrl,
         credentials: {
           clientId: 'static/taskcluster/root',
           accessToken: helper.rootAccessToken,
@@ -295,4 +301,3 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
     });
   });
 });
-*/

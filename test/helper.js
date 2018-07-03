@@ -71,7 +71,7 @@ exports.withCfg = (mock, skipping) => {
 /**
  * Set helper.<Class> for each of the Azure entities used in the service
  */
-exports.withEntities = (mock, skipping) => {
+exports.withEntities = (mock, skipping, options={}) => {
   const tables = [
     {name: 'Client'},
   ];
@@ -116,7 +116,9 @@ exports.withEntities = (mock, skipping) => {
       }});
     }));
   };
-  setup(cleanup);
+  if (!options.orderedTests) {
+    setup(cleanup);
+  }
   suiteTeardown(cleanup);
 };
 
@@ -138,7 +140,7 @@ class FakeRoles {
 /**
  * Setup the Roles blob
  */
-exports.withRoles = (mock, skipping) => {
+exports.withRoles = (mock, skipping, options={}) => {
   suiteSetup(async function() {
     if (skipping()) {
       return;
@@ -176,7 +178,9 @@ exports.withRoles = (mock, skipping) => {
       //}
     }
   };
-  setup(cleanup);
+  if (!options.orderedTests) {
+    setup(cleanup);
+  }
   suiteTeardown(cleanup);
 };
 
@@ -394,7 +398,6 @@ exports.withServers = (mock, skipping) => {
 
   });
 
-  // TODO: Is this necessary???
   setup(() => {
     exports.setupScopes();
   });

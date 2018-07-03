@@ -6,21 +6,21 @@ const _           = require('lodash');
 const assume      = require('assume');
 const taskcluster = require('taskcluster-client');
 
-/** TODO: ALSO ORDERED TESTSSS
 helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
-  helper.withEntities(mock, skipping);
-  helper.withRoles(mock, skipping);
+  helper.withEntities(mock, skipping, {orderedTests: true});
+  helper.withRoles(mock, skipping, {orderedTests: true});
   helper.withServers(mock, skipping);
 
   suite('charlene creates permanent credentials for a test runner', function() {
-    if (skipping()) {
-      this.skip();
-    }
-    suiteSetup(async () => {
-      //await helper.apiClient.deleteRole('client-id:test-users/test');
-      //await helper.apiClient.deleteClient('test-users');
-      //await helper.apiClient.deleteClient('test-users/charlene/travis-tests');
+    suiteSetup(async function() {
+      if (skipping()) {
+        this.skip();
+      } else {
+        await helper.apiClient.deleteRole('client-id:test-users/test');
+        await helper.apiClient.deleteClient('test-users');
+        await helper.apiClient.deleteClient('test-users/charlene/travis-tests');
+      }
     });
 
     // NOTE: these tests run in order
@@ -204,4 +204,3 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
 
   });
 });
-*/
