@@ -16,7 +16,7 @@ const badcreds = {
   accessToken: 'wrong',
 };
 
-helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock, skipping) {
+helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
   helper.withEntities(mock, skipping);
   helper.withRoles(mock, skipping);
@@ -102,7 +102,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
   });
 });
 
-helper.secrets.mockSuite(`${helper.suiteName(__filename)} | get`, ['azure'], function(mock, skipping) {
+helper.secrets.mockSuite(`${helper.suiteName(__filename)} | get`, ['app', 'azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
   helper.withEntities(mock, skipping);
   helper.withRoles(mock, skipping);

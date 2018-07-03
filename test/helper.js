@@ -40,6 +40,9 @@ exports.rootUrl = `http://localhost:${PROXY_PORT}`;
 exports.secrets = new Secrets({
   secretName: 'project/taskcluster/testing/taskcluster-auth',
   secrets: {
+    app: [
+      {env: 'AZURE_ACCOUNTS', cfg: 'app.azureAccounts', mock: {fakeaccount: 'key'}},
+    ],
     azure: [
       {env: 'AZURE_ACCOUNT_ID', cfg: 'azure.accountId', name: 'accountId'},
       {env: 'AZURE_ACCOUNT_KEY', cfg: 'azure.accountKey', name: 'accountKey'},
