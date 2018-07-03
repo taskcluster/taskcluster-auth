@@ -44,8 +44,8 @@ exports.secrets = new Secrets({
       {env: 'AZURE_ACCOUNTS', cfg: 'app.azureAccounts', mock: {fakeaccount: 'key'}},
     ],
     azure: [
-      {env: 'AZURE_ACCOUNT_ID', cfg: 'azure.accountId', name: 'accountId'},
-      {env: 'AZURE_ACCOUNT_KEY', cfg: 'azure.accountKey', name: 'accountKey'},
+      {env: 'AZURE_ACCOUNT', cfg: 'azure.accountId', name: 'accountId'},
+      {env: 'AZURE_ACCOUNT_KEY', cfg: 'azure.accessKey', name: 'accountKey'},
     ],
     aws: [
       {env: 'AWS_ACCESS_KEY_ID', cfg: 'aws.accessKeyId'},
@@ -149,6 +149,8 @@ exports.withRoles = (mock, skipping, options={}) => {
       return;
     }
 
+    exports.containerName = `auth-test-${uuid.v4()}`;
+
     if (mock) {
       const cfg = await exports.load('cfg');
       exports.Roles = new FakeRoles();
@@ -163,22 +165,22 @@ exports.withRoles = (mock, skipping, options={}) => {
     if (mock) {
       exports.Roles.roles = [];
     } else {
-      // TODO: Figure out what to do with this old bit! Is it still necessary?
-      //const blobService = new azure.Blob({
-      //  accountId: cfg.azure.accountName,
-      //  accountKey: cfg.azure.accountKey,
-      //});
-      //try {
-      //  await blobService.deleteContainer(helper.containerName);
-      //} catch (e) {
-      //  if (e.code !== 'ResourceNotFound') {
-      //    throw e;
-      //  }
-      //  // already deleted, so nothing to do
-      //  // NOTE: really, this doesn't work -- the container doesn't register as existing
-      //  // before the tests are complete, so we "leak" containers despite this effort to
-      //  // clean them up.
-      //}
+      const cfg = await exports.load('cfg');
+      const blobService = new azure.Blob({
+        accountId: cfg.azure.accountName,
+        accountKey: cfg.azure.accountKey,
+      });
+      try {
+        await blobService.deleteContainer(exports.containerName);
+      } catch (e) {
+        if (e.code !== 'ResourceNotFound') {
+          throw e;
+        }
+        // already deleted, so nothing to do
+        // NOTE: really, this doesn't work -- the container doesn't register as existing
+        // before the tests are complete, so we "leak" containers despite this effort to
+        // clean them up.
+      }
     }
   };
   if (!options.orderedTests) {

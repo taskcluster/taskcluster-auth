@@ -14,13 +14,14 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
   if (mock) {
     return; // This test file only works on real things apparently
   }
-  const containerName = `auth-test-${uuid.v4()}`;
+  let containerName;
 
   let credentials;
 
   let roles;
   suiteSetup(async function() {
     if (!mock && !skipping()) {
+      containerName = helper.containerName;
       credentials = helper.secrets.get('azure');
       roles = new containers.Roles({
         containerName,
