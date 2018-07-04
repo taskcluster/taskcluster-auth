@@ -106,7 +106,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     });
     assume(role.roleId).equals('test*');
 
-    helper.apiClient.createRole('other*', {
+    await helper.apiClient.createRole('other*', {
       description: 'other*',
       scopes: ['assume:te<..>'],
     }).then(() => assert(false, 'Expected error'),
@@ -210,7 +210,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     let roleId2 = `sub-thing:${clientId}`;
     let auth;
 
-    suiteSetup(function() {
+    suiteSetup(async function() {
       if (skipping()) {
         this.skip();
       }

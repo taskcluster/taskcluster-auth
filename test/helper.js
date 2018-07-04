@@ -84,9 +84,10 @@ exports.withEntities = (mock, skipping, options={}) => {
       return;
     }
 
+    const cfg = await exports.load('cfg');
+    exports.testaccount = _.keys(cfg.app.azureAccounts)[0];
+
     if (mock) {
-      const cfg = await exports.load('cfg');
-      exports.testaccount = _.keys(cfg.app.azureAccounts)[0];
       await Promise.all(tables.map(async tbl => {
         exports.load.inject(tbl.name, data[tbl.className || tbl.name].setup({
           tableName: tbl.name,
@@ -149,12 +150,15 @@ exports.withRoles = (mock, skipping, options={}) => {
       return;
     }
 
+    const cfg = await exports.load('cfg');
     exports.containerName = `auth-test-${uuid.v4()}`;
+    exports.load.cfg('app.rolesContainerName', exports.containerName);
 
     if (mock) {
-      const cfg = await exports.load('cfg');
       exports.Roles = new FakeRoles();
       exports.load.inject('Roles', exports.Roles);
+    } else {
+      exports.Roles = await exports.load('Roles');
     }
   });
 
@@ -167,7 +171,7 @@ exports.withRoles = (mock, skipping, options={}) => {
     } else {
       const cfg = await exports.load('cfg');
       const blobService = new azure.Blob({
-        accountId: cfg.azure.accountName,
+        accountId: cfg.azure.accountId,
         accountKey: cfg.azure.accountKey,
       });
       try {

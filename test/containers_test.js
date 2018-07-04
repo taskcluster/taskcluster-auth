@@ -14,21 +14,41 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
   if (mock) {
     return; // This test file only works on real things apparently
   }
-  let containerName;
 
+  const containerName = `auth-test-${uuid.v4()}`;
   let credentials;
-
   let roles;
+
   suiteSetup(async function() {
     if (!mock && !skipping()) {
-      containerName = helper.containerName;
-      credentials = helper.secrets.get('azure');
+      credentials = helper.cfg.azure;
       roles = new containers.Roles({
         containerName,
         credentials,
       });
 
       await roles.setup();
+    }
+  });
+
+  // clean up the container manually at the end
+  suiteTeardown(async function() {
+    if (!mock && !skipping()) {
+      const blobService = new azure.Blob({
+        accountId: credentials.accountId,
+        accountKey: credentials.accountKey,
+      });
+      try {
+        await blobService.deleteContainer(containerName);
+      } catch (e) {
+        if (e.code !== 'ResourceNotFound') {
+          throw e;
+        }
+        // already deleted, so nothing to do
+        // NOTE: really, this doesn't work -- the container doesn't register as existing
+        // before the tests are complete, so we "leak" containers despite this effort to
+        // clean them up.
+      }
     }
   });
 
@@ -74,26 +94,5 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['azure'], function(mock,
 
     assert.deepEqual(sorted((await roles2.get()).map(r => r.roleId)),
       sorted(['my-role', 'second-role']));
-  });
-
-  // clean up the container manually at the end
-  suiteTeardown(async function() {
-    if (credentials) {
-      const blobService = new azure.Blob({
-        accountId: credentials.accountName,
-        accountKey: credentials.accountKey,
-      });
-      try {
-        await blobService.deleteContainer(containerName);
-      } catch (e) {
-        if (e.code !== 'ResourceNotFound') {
-          throw e;
-        }
-        // already deleted, so nothing to do
-        // NOTE: really, this doesn't work -- the container doesn't register as existing
-        // before the tests are complete, so we "leak" containers despite this effort to
-        // clean them up.
-      }
-    }
   });
 });

@@ -5,7 +5,7 @@
   "main": "node src/server production",
   "scripts": {
     "heroku-prebuild": "echo $SOURCE_VERSION > .git-version",
-    "test": "mocha test/*_test.js",
+    "test": "mocha -b test/*_test.js",
     "lint": "eslint src/*.js test/*.js",
     "pretest": "yarn lint",
     "checkStagingSetup": "heroku run -a taskcluster-auth-staging node bin/make-check-client.js",
