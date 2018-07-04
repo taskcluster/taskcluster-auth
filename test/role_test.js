@@ -182,21 +182,21 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
 
   test('update a role introducing a parameter cycle', async () => {
     await Promise.all([
-      await helper.auth.deleteRole('test-1:*'),
-      await helper.auth.deleteRole('test-2:*'),
+      await helper.apiClient.deleteRole('test-1:*'),
+      await helper.apiClient.deleteRole('test-2:*'),
     ]);
 
-    await helper.auth.createRole('test-1:*', {
+    await helper.apiClient.createRole('test-1:*', {
       description: 'test role 1',
       scopes: ['assume:test-2:prefix-<..>/some-suffix'],
     });
 
-    await helper.auth.createRole('test-2:*', {
+    await helper.apiClient.createRole('test-2:*', {
       description: 'test role 2',
       scopes: ['plain-scope'],
     });
 
-    await helper.auth.updateRole('test-2:*', {
+    await helper.apiClient.updateRole('test-2:*', {
       description: 'test role 2 (updated)',
       scopes: ['assume:test-1:prefix/<..>#some-suffix'],
     }).then(
