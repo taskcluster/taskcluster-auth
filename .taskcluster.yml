@@ -22,6 +22,7 @@ tasks:
       image: "node:8"
       env:
         NO_TEST_SKIP: true
+        TEST_BUCKET: 'test-bucket-for-any-garbage'
       features:
         taskclusterProxy: true
       command:
