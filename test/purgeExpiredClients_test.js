@@ -1,5 +1,5 @@
-const helper      = require('./helper');
-const assume      = require('assume');
+const helper = require('./helper');
+const assume = require('assume');
 const taskcluster = require('taskcluster-client');
 
 helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {

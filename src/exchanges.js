@@ -1,8 +1,8 @@
-var Exchanges = require('pulse-publisher');
-var assert    = require('assert');
+const Exchanges = require('pulse-publisher');
+const assert = require('assert');
 
 /** Declaration of exchanges offered by the auth */
-var exchanges = new Exchanges({
+const exchanges = new Exchanges({
   title: 'Auth Pulse Exchanges',
   projectName: 'taskcluster-auth',
   serviceName: 'auth',
@@ -23,7 +23,7 @@ var exchanges = new Exchanges({
 module.exports = exchanges;
 
 /** Build routing key construct for `exchanges.declare` */
-var buildRoutingKey = (options) => {
+const buildRoutingKey = (options) => {
   return [
     {
       name:             'reserved',
@@ -37,7 +37,7 @@ var buildRoutingKey = (options) => {
 };
 
 /** Build an AMQP compatible message from a message */
-var commonMessageBuilder = (message) => {
+const commonMessageBuilder = (message) => {
   message.version = 1;
   return message;
 };

@@ -1,8 +1,8 @@
-var taskcluster = require('taskcluster-client');
-var helper = require('./helper');
-var assume = require('assume');
-var slugid = require('slugid');
-var hawk = require('hawk');
+const taskcluster = require('taskcluster-client');
+const helper = require('./helper');
+const assume = require('assume');
+const slugid = require('slugid');
+const hawk = require('hawk');
 
 // Tests that run against an active staging instance of the service to
 // verify that it is, more or less, still functional.  This is not a full

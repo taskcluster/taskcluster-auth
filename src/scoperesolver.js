@@ -1,10 +1,10 @@
-var _           = require('lodash');
-var assert      = require('assert');
-var taskcluster = require('taskcluster-client');
-var events      = require('events');
-var LRU         = require('quick-lru');
-var debug       = require('debug')('auth:ScopeResolver');
-var {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
+const _ = require('lodash');
+const assert = require('assert');
+const taskcluster = require('taskcluster-client');
+const events = require('events');
+const LRU = require('quick-lru');
+const debug = require('debug')('auth:ScopeResolver');
+const {scopeCompare, mergeScopeSets, normalizeScopeSet} = require('taskcluster-lib-scopes');
 const trie = require('./trie');
 const ScopeSetBuilder = require('./scopesetbuilder');
 

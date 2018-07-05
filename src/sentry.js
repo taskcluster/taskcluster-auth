@@ -1,5 +1,5 @@
-var builder     = require('./v1');
-let _           = require('lodash');
+const builder = require('./v1');
+const _ = require('lodash');
 
 builder.declare({
   method:     'get',

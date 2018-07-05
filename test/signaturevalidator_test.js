@@ -1,15 +1,15 @@
-const helper       = require('./helper');
-const assert       = require('assert');
-const mocha        = require('mocha');
-const debug        = require('debug')('test:signaturevalidator');
-const hawk         = require('hawk');
-const _            = require('lodash');
-const assume       = require('assume');
-const slugid       = require('slugid');
-const crypto       = require('crypto');
-const taskcluster  = require('taskcluster-client');
+const helper = require('./helper');
+const assert = require('assert');
+const mocha = require('mocha');
+const debug = require('debug')('test:signaturevalidator');
+const hawk = require('hawk');
+const _ = require('lodash');
+const assume = require('assume');
+const slugid = require('slugid');
+const crypto = require('crypto');
+const taskcluster = require('taskcluster-client');
 const sigvalidator = require('../src/signaturevalidator');
-const Monitor      = require('taskcluster-lib-monitor');
+const Monitor = require('taskcluster-lib-monitor');
 
 suite(helper.suiteName(__filename), function() {
   var one_hour = taskcluster.fromNow('1 hour');

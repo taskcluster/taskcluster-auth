@@ -1,6 +1,6 @@
-let builder = require('./v1');
-let Statsum = require('statsum');
-let taskcluster = require('taskcluster-client');
+const builder = require('./v1');
+const Statsum = require('statsum');
+const taskcluster = require('taskcluster-client');
 
 builder.declare({
   method:     'get',

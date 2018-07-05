@@ -1,7 +1,7 @@
-let builder = require('./v1');
-let slugid = require('slugid');
-let jwt = require('jsonwebtoken');
-let taskcluster = require('taskcluster-client');
+const builder = require('./v1');
+const slugid = require('slugid');
+const jwt = require('jsonwebtoken');
+const taskcluster = require('taskcluster-client');
 
 builder.declare({
   method:     'get',

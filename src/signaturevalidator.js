@@ -1,13 +1,13 @@
-var debug         = require('debug')('auth:signaturevalidator');
-var hawk          = require('hawk');
-var assert        = require('assert');
-var _             = require('lodash');
+const debug = require('debug')('auth:signaturevalidator');
+const hawk = require('hawk');
+const assert = require('assert');
+const _ = require('lodash');
 require('superagent-hawk')(require('superagent'));
 // Someone should rename utils to scopes... 
-var utils         = require('taskcluster-lib-scopes');
-var hoek          = require('hoek');
-var https         = require('https');
-var crypto        = require('crypto');
+const utils = require('taskcluster-lib-scopes');
+const hoek = require('hoek');
+const https = require('https');
+const crypto = require('crypto');
 
 /**
  * Limit the client scopes and possibly use temporary keys.
@@ -16,7 +16,7 @@ var crypto        = require('crypto');
  * applies scope restrictions, certificate validation and returns a clone if
  * modified (otherwise it returns the original).
  */
-var parseExt = function(ext) {
+const parseExt = function(ext) {
   // Attempt to parse ext
   try {
     ext = JSON.parse(new Buffer(ext, 'base64').toString('utf-8'));
@@ -34,7 +34,7 @@ var parseExt = function(ext) {
  * applies scope restrictions, certificate validation and returns a clone if
  * modified (otherwise it returns the original).
  */
-var limitClientWithExt = function(credentialName, issuingClientId, accessToken, scopes,
+const limitClientWithExt = function(credentialName, issuingClientId, accessToken, scopes,
   expires, ext, expandScopes) {
   let issuingScopes = scopes;
   let res = {scopes, expires, accessToken};
@@ -195,7 +195,7 @@ var limitClientWithExt = function(credentialName, issuingClientId, accessToken, 
  * The method returned by this function works as `signatureValidator` for
  * `remoteAuthentication`.
  */
-var createSignatureValidator = function(options) {
+const createSignatureValidator = function(options) {
   assert(typeof options === 'object', 'options must be an object');
   assert(options.clientLoader instanceof Function,
     'options.clientLoader must be a function');

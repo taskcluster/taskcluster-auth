@@ -1,13 +1,13 @@
-var _           = require('lodash');
-var azure       = require('fast-azure-storage');
-var builder     = require('./v1');
+const _ = require('lodash');
+const azure = require('fast-azure-storage');
+const builder = require('./v1');
 
 // keyed by account/tableName, the last time createTable was called for the
 // given table.  This is used to avoid lots of redundant calls to createTable
 // for the same table.
-var tableLastCreated = {};
+const tableLastCreated = {};
 // Similar for containers
-var containerLastCreated = {};
+const containerLastCreated = {};
 
 builder.declare({
   method:     'get',

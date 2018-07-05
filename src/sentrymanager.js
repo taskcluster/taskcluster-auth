@@ -1,10 +1,10 @@
-let _           = require('lodash');
-let taskcluster = require('taskcluster-client');
-let debug       = require('debug')('app:sentry');
-let assert      = require('assert');
+const _ = require('lodash');
+const taskcluster = require('taskcluster-client');
+const debug = require('debug')('app:sentry');
+const assert = require('assert');
 
-let pattern = /^ managed \(expires-at:([0-9TZ:.-]+)\)$/;
-let parseKeys = (keys, prefix) => {
+const pattern = /^ managed \(expires-at:([0-9TZ:.-]+)\)$/;
+const parseKeys = (keys, prefix) => {
   let results = [];
   for (let k of keys) {
     if (!_.startsWith(k.label, prefix)) {

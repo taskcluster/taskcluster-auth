@@ -8,7 +8,7 @@ const testing = require('taskcluster-lib-testing');
  *
  * Add your schema tests below...
  */
-var testCases = [
+const testCases = [
   {
     path:     'authenticate-hawk-request.json',
     schema:   'v1/authenticate-hawk-request.yml',

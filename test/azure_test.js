@@ -1,9 +1,9 @@
-const assert      = require('assert');
-const debug       = require('debug')('auth:test:azure');
-const helper      = require('./helper');
-const slugid      = require('slugid');
-const _           = require('lodash');
-const azure       = require('fast-azure-storage');
+const assert = require('assert');
+const debug = require('debug')('auth:test:azure');
+const helper = require('./helper');
+const slugid = require('slugid');
+const _ = require('lodash');
+const azure = require('fast-azure-storage');
 const taskcluster = require('taskcluster-client');
 
 helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {

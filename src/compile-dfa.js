@@ -4,7 +4,7 @@
 /**
  * Compile DFA to a function equivalent to `executeDFA.bind(null, dfa)`.
  */
-let compileDFA = (dfa) => {
+const compileDFA = (dfa) => {
   // Render a DFA state to code
   let renderDFA = (state, depth) => {
     var d = '';

@@ -1,8 +1,8 @@
-const helper      = require('./helper');
-const _           = require('lodash');
-const assume      = require('assume');
+const helper = require('./helper');
+const _ = require('lodash');
+const assume = require('assume');
 const taskcluster = require('taskcluster-client');
-const mocha       = require('mocha');
+const mocha = require('mocha');
 
 helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);

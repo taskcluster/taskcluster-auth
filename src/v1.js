@@ -1,11 +1,11 @@
-var debug       = require('debug')('auth:api');
-var assert      = require('assert');
-var APIBuilder  = require('taskcluster-lib-api');
-var scopeUtils  = require('taskcluster-lib-scopes');
-var slugid      = require('slugid');
-var _           = require('lodash');
-var signaturevalidator = require('./signaturevalidator');
-let ScopeResolver      = require('./scoperesolver');
+const debug = require('debug')('auth:api');
+const assert = require('assert');
+const APIBuilder = require('taskcluster-lib-api');
+const scopeUtils = require('taskcluster-lib-scopes');
+const slugid = require('slugid');
+const _ = require('lodash');
+const signaturevalidator = require('./signaturevalidator');
+const ScopeResolver = require('./scoperesolver');
 
 /**
  * Helper to return a role as defined in the blob to one suitable for return.
@@ -17,7 +17,7 @@ const roleToJson = (role, context) => _.defaults(
 );
 
 /** API end-point for version v1/ */
-var builder = new APIBuilder({
+const builder = new APIBuilder({
   title:      'Authentication API',
   serviceName:       'auth',
   version:           'v1',

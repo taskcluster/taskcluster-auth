@@ -303,7 +303,7 @@ exports.withPulse = (mock, skipping) => {
   });
 };
 
-let testServiceBuilder = new Builder({
+const testServiceBuilder = new Builder({
   title: 'Test API Server',
   description: 'API server for testing',
   serviceName: 'authtest',

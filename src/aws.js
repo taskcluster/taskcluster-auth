@@ -1,4 +1,4 @@
-var builder = require('./v1');
+const builder = require('./v1');
 
 builder.declare({
   method:     'get',
