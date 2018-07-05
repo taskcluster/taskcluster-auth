@@ -3,10 +3,10 @@ defaults:
     rootUrl:                  !env TASKCLUSTER_ROOT_URL
   app:
     # Azure table for the client table
-    clientTableName:          Clients
+    clientTableName:          !env CLIENT_TABLE_NAME
 
     # Azure blob container for the role table
-    rolesContainerName:       auth-default-roles
+    rolesContainerName:       !env ROLES_CONTAINER_NAME
 
     # Publish references and schemas
     publishMetaData:          !env:bool PUBLISH_METADATA
@@ -126,8 +126,6 @@ production:
     development:              false
 test:
   app:
-    clientTableName:          TestClients29
-    rolesContainerName:       auth-testing-roles
     publishMetaData:          false
     statsComponent:           auth-tests
     # hardcoded into helper.js

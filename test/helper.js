@@ -86,6 +86,8 @@ exports.withEntities = (mock, skipping, options={}) => {
 
     const cfg = await exports.load('cfg');
     exports.testaccount = _.keys(cfg.app.azureAccounts)[0];
+    exports.clientTableName = `TestClients${Date.now()}v${slugid.nice().replace(/[_-]/g, '')}`;
+    exports.load.cfg('app.clientTableName', exports.clientTableName);
 
     if (mock) {
       await Promise.all(tables.map(async tbl => {
