@@ -84,9 +84,9 @@ builder.declare({
     'table if it doesn\'t already exist.',
   ].join('\n'),
 }, async function(req, res) {
-  var account   = req.params.account;
-  var tableName = req.params.table;
-  var level     = req.params.level;
+  let account   = req.params.account;
+  let tableName = req.params.table;
+  let level     = req.params.level;
 
   // We have a complicated scope situation for read-only since we want
   // read-write to grant read-only permissions as well
@@ -104,7 +104,7 @@ builder.declare({
   }
 
   // Construct client
-  var table = new azure.Table({
+  let table = new azure.Table({
     accountId:  account,
     accessKey:  this.azureAccounts[account],
   });
@@ -128,8 +128,8 @@ builder.declare({
   let perm = level === 'read-write';
 
   // Construct SAS
-  var expiry = new Date(Date.now() + 25 * 60 * 1000);
-  var sas = table.sas(tableName, {
+  let expiry = new Date(Date.now() + 25 * 60 * 1000);
+  let sas = table.sas(tableName, {
     start:    new Date(Date.now() - 15 * 60 * 1000),
     expiry:   expiry,
     permissions: {

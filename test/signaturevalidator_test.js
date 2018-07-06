@@ -12,12 +12,12 @@ const sigvalidator = require('../src/signaturevalidator');
 const Monitor = require('taskcluster-lib-monitor');
 
 suite(helper.suiteName(__filename), function() {
-  var one_hour = taskcluster.fromNow('1 hour');
-  var two_hours = taskcluster.fromNow('2 hour');
-  var three_hours = taskcluster.fromNow('3 hour');
+  let one_hour = taskcluster.fromNow('1 hour');
+  let two_hours = taskcluster.fromNow('2 hour');
+  let three_hours = taskcluster.fromNow('3 hour');
 
-  var validator;
-  var clients = {
+  let validator;
+  let clients = {
     root: {
       clientId: 'root',
       accessToken: 'root-secret',
@@ -45,7 +45,7 @@ suite(helper.suiteName(__filename), function() {
     });
   });
 
-  var test = function(name, input, expected) {
+  let test = function(name, input, expected) {
     mocha.test(name, async function() {
       // defer creation of input until the test runs, if necessary
       if (typeof input == 'function') {
@@ -91,7 +91,7 @@ suite(helper.suiteName(__filename), function() {
             .toString('base64');
         }
 
-        var bewit = hawk.client.getBewit('https://' + input.host + input.resource, {
+        let bewit = hawk.client.getBewit('https://' + input.host + input.resource, {
           credentials: {
             id: input.bewit.id,
             key: input.bewit.key,
@@ -109,7 +109,7 @@ suite(helper.suiteName(__filename), function() {
     });
   };
 
-  var testWithTemp = function(name, options, inputFn, expected) {
+  let testWithTemp = function(name, options, inputFn, expected) {
     /**
      * Options is on the form
      * {
@@ -127,7 +127,7 @@ suite(helper.suiteName(__filename), function() {
     let makeInput = () => {
       let id = options.id;
 
-      var start = new Date();
+      let start = new Date();
       start.setMinutes(start.getMinutes() - 5);
 
       // Set default options
@@ -139,7 +139,7 @@ suite(helper.suiteName(__filename), function() {
       });
 
       // Construct certificate
-      var cert = {
+      let cert = {
         version:    1,
         scopes:     _.cloneDeep(options.scopes),
         start:      options.start.getTime(),
@@ -175,7 +175,7 @@ suite(helper.suiteName(__filename), function() {
       }
 
       // Construct temporary key
-      var accessToken = crypto
+      let accessToken = crypto
         .createHmac('sha256', options.accessToken)
         .update(cert.seed)
         .digest('base64')

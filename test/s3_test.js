@@ -22,10 +22,10 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
   });
 
   test('awsS3Credentials read-write folder1/folder2/', async () => {
-    var id    = slugid.v4();
-    var text  = slugid.v4();
+    let id    = slugid.v4();
+    let text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.apiClient.awsS3Credentials(
+    let result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/folder2/'
@@ -34,7 +34,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
       'Expected expires to be in the future');
 
     // Create aws credentials
-    var s3 = new aws.S3(result.credentials);
+    let s3 = new aws.S3(result.credentials);
     debug('### s3.putObject');
     await s3.putObject({
       Bucket:   bucket,
@@ -43,7 +43,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
     }).promise();
 
     debug('### s3.getObject');
-    var res = await s3.getObject({
+    let res = await s3.getObject({
       Bucket:   bucket,
       Key:      'folder1/folder2/' + id,
     }).promise();
@@ -58,10 +58,10 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
   });
 
   test('awsS3Credentials read-write root', async () => {
-    var id    = slugid.v4();
-    var text  = slugid.v4();
+    let id    = slugid.v4();
+    let text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.apiClient.awsS3Credentials(
+    let result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       ''
@@ -70,7 +70,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
       'Expected expires to be in the future');
 
     // Create aws credentials
-    var s3 = new aws.S3(result.credentials);
+    let s3 = new aws.S3(result.credentials);
     debug('### s3.putObject');
     await s3.putObject({
       Bucket:   bucket,
@@ -79,7 +79,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
     }).promise();
 
     debug('### s3.getObject');
-    var res = await s3.getObject({
+    let res = await s3.getObject({
       Bucket:   bucket,
       Key:      id,
     }).promise();
@@ -94,9 +94,9 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
   });
 
   test('awsS3Credentials w. folder1/ access denied for folder2/', async () => {
-    var id = slugid.v4();
+    let id = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.apiClient.awsS3Credentials(
+    let result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/'
@@ -105,7 +105,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
       'Expected expires to be in the future');
 
     // Create aws credentials
-    var s3 = new aws.S3(result.credentials);
+    let s3 = new aws.S3(result.credentials);
     debug('### s3.putObject');
     try {
       await s3.putObject({
@@ -120,15 +120,15 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
   });
 
   test('awsS3Credentials read-only folder1/ + (403 on write)', async () => {
-    var id    = slugid.v4();
-    var text  = slugid.v4();
+    let id    = slugid.v4();
+    let text  = slugid.v4();
     debug('### auth.awsS3Credentials');
-    var result = await helper.apiClient.awsS3Credentials(
+    let result = await helper.apiClient.awsS3Credentials(
       'read-write',
       bucket,
       'folder1/'
     );
-    var s3 = new aws.S3(result.credentials);
+    let s3 = new aws.S3(result.credentials);
     debug('### s3.putObject');
     await s3.putObject({
       Bucket:   bucket,
@@ -142,9 +142,9 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'aws'], function(
       bucket,
       'folder1/'
     );
-    var s3 = new aws.S3(result.credentials);
+    s3 = new aws.S3(result.credentials);
     debug('### s3.getObject');
-    var res = await s3.getObject({
+    let res = await s3.getObject({
       Bucket:   bucket,
       Key:      'folder1/' + id,
     }).promise();

@@ -60,8 +60,8 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   test('auth.createClient (no scopes)', async () => {
-    var expires = taskcluster.fromNow('1 hour');
-    var description = 'Test client...';
+    let expires = taskcluster.fromNow('1 hour');
+    let description = 'Test client...';
     let client = await helper.apiClient.createClient(CLIENT_ID, {
       expires, description,
     });
@@ -82,9 +82,9 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   test('auth.createClient (with scopes)', async () => {
-    var expires = taskcluster.fromNow('1 hour');
-    var description = 'Test client...';
-    var scopes = ['scope1', 'myapi:*'];
+    let expires = taskcluster.fromNow('1 hour');
+    let description = 'Test client...';
+    let scopes = ['scope1', 'myapi:*'];
     let client = await helper.apiClient.createClient(CLIENT_ID, {
       expires, description, scopes,
     });
@@ -112,9 +112,9 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   const createTestClient = async () => {
-    var expires = taskcluster.fromNow('1 hour');
-    var description = 'Test client...';
-    var scopes = ['scope1', 'myapi:*'];
+    let expires = taskcluster.fromNow('1 hour');
+    let description = 'Test client...';
+    let scopes = ['scope1', 'myapi:*'];
     let client = await helper.apiClient.createClient(CLIENT_ID, {
       expires, description, scopes,
     });
@@ -149,7 +149,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     let client = await helper.apiClient.resetAccessToken(CLIENT_ID);
 
     // Create testClient
-    var testClient = new helper.TestClient({
+    let testClient = new helper.TestClient({
       rootUrl: helper.rootUrl,
       credentials: {
         clientId: CLIENT_ID,
@@ -178,7 +178,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   test('auth.updateClient (no scope changes)', async () => {
     await createTestClient();
 
-    var expires = new Date();
+    let expires = new Date();
     let description = 'Different test description...';
     let client = await helper.apiClient.updateClient(CLIENT_ID, {
       description, expires,
@@ -206,7 +206,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   test('auth.updateClient (with scope changes)', async () => {
     await createTestClient();
 
-    var expires = new Date();
+    let expires = new Date();
     let description = 'Third test description...';
     let scopes = ['scope2', 'scope3'];
     let client = await helper.apiClient.updateClient(CLIENT_ID, {

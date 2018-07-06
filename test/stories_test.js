@@ -24,7 +24,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     });
 
     // NOTE: these tests run in order
-    var identityProvider,
+    let identityProvider,
       identityProviderToken,
       charlene,
       travisTests;

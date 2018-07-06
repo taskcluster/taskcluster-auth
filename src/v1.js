@@ -237,7 +237,7 @@ builder.declare({
   // Check scopes
   await req.authorize({clientId, scopes});
 
-  var accessToken = slugid.v4() + slugid.v4();
+  let accessToken = slugid.v4() + slugid.v4();
   let client = await this.Client.create({
     clientId:     clientId,
     description:  input.description,

@@ -187,8 +187,8 @@ Client.syncStaticClients = async function(clients = []) {
  * details.deleteOnExpiration is false.
  */
 Client.purgeExpired = async function(now = new Date()) {
-  var count = 0;
-  var expired = await this.scan({
+  let count = 0;
+  let expired = await this.scan({
     expires: Entity.op.lessThan(now),
   }, {
     limit: 100,

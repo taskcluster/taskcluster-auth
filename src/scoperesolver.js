@@ -92,8 +92,8 @@ class ScopeResolver extends events.EventEmitter {
     this._options       = options;
 
     // Create authEvents client
-    var AuthEvents = taskcluster.createClient(this._options.exchangeReference);
-    var authEvents = new AuthEvents({rootUrl: this._options.rootUrl});
+    let AuthEvents = taskcluster.createClient(this._options.exchangeReference);
+    let authEvents = new AuthEvents({rootUrl: this._options.rootUrl});
 
     // Create PulseListeners
     this._clientListener = new taskcluster.PulseListener({
