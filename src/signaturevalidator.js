@@ -292,7 +292,7 @@ const createSignatureValidator = function(options) {
           port: req.port,
           resource: req.resource,
           method: req.method.toUpperCase(),
-          sourceIp: req.sourceIp,
+          sourceIp: req.sourceIp || '0.0.0.0',
         });
         return accept(result);
       };
