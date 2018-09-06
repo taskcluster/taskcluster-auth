@@ -22,7 +22,7 @@
     "azure-entities": "^4.0.0",
     "debug": "^3.1.0",
     "fast-azure-storage": "^2.0.0",
-    "hawk": "2.3.0",
+    "hawk": "^4.1.2",
     "hoek": "^5.0.3",
     "jsonwebtoken": "^8.1.0",
     "lodash": "^4.17.4",
