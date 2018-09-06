@@ -2,7 +2,6 @@ const debug = require('debug')('auth:signaturevalidator');
 const hawk = require('hawk');
 const assert = require('assert');
 const _ = require('lodash');
-require('superagent-hawk')(require('superagent'));
 // Someone should rename utils to scopes... 
 const utils = require('taskcluster-lib-scopes');
 const hoek = require('hoek');
