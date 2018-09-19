@@ -2624,9 +2624,9 @@ taskcluster-lib-loader@^10.0.1:
     promise "^8.0.1"
     topo-sort "^1.0.0"
 
-taskcluster-lib-monitor@^10.0.0:
+"taskcluster-lib-monitor@https://github.com/ajvb/taskcluster-lib-monitor.git#refs/heads/ajvb/move-to-kinesis":
   version "10.0.0"
-  resolved "https://registry.yarnpkg.com/taskcluster-lib-monitor/-/taskcluster-lib-monitor-10.0.0.tgz#85dc2ca71a388ac58100bf26392930ea98a0c752"
+  resolved "https://github.com/ajvb/taskcluster-lib-monitor.git#1eaaa565c997a923ed3419623bf304291231bb92"
   dependencies:
     app-root-dir "^1.0.2"
     aws-sdk "^2.30.0"

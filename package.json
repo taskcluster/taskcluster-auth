@@ -42,7 +42,7 @@
     "taskcluster-lib-docs": "^10.0.0",
     "taskcluster-lib-iterate": "^10.0.0",
     "taskcluster-lib-loader": "^10.0.1",
-    "taskcluster-lib-monitor": "^10.0.0",
+    "taskcluster-lib-monitor": "https://github.com/ajvb/taskcluster-lib-monitor.git#refs/heads/ajvb/move-to-kinesis",
     "taskcluster-lib-scopes": "^10.0.0",
     "taskcluster-lib-validate": "^11.0.2",
     "typed-env-config": "^1.1.0"
