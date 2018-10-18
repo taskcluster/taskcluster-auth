@@ -1041,6 +1041,17 @@ fast-azure-storage@^2.2.1:
   optionalDependencies:
     libxmljs "^0.18.7"
 
+fast-azure-storage@^2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/fast-azure-storage/-/fast-azure-storage-2.3.0.tgz#9012201beaa90d4e3c88a73151f5bc6db0a18d9f"
+  integrity sha512-xsehXFswxe6YjFuL3Y0Y1cYhl5P1XtEfV1X9OAvcH+HauVomHVEDa8b7ywvCp2ao4AODP+q7OjA9VdG7qOsdYg==
+  dependencies:
+    debug "^3.1.0"
+    pixl-xml "^1.0.13"
+    promise "^8.0.1"
+  optionalDependencies:
+    libxmljs "^0.18.7"
+
 fast-deep-equal@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/fast-deep-equal/-/fast-deep-equal-1.0.0.tgz#96256a3bc975595eb36d82e9929d060d893439ff"
