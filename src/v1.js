@@ -617,6 +617,7 @@ builder.declare({
     response.continuationToken = limit+continuationToken;
   } else if (limit) {
     roles = roles.slice(0, limit);   //if no continuationToken is provided
+    response.continuationToken = limit;
   }
 
   //generate a list of roleIds corresponding to the selected roles
