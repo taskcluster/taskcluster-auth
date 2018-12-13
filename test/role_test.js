@@ -138,6 +138,29 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     assert(roles.some(role => role.roleId === 'thing-id:' + clientId));
   });
 
+  test('listRoleIds', async () => {
+    let result = await helper.apiClient.listRoleIds();
+    assert(result.roleIds.some(roleId => roleId === 'thing-id:' + clientId));
+  });
+
+  test('listRoleIds (limit, [continuationToken])', async () => {
+    let roleIds = [];
+    let query = {limit:1};
+    let allRoleIds = await helper.apiClient.listRoleIds();
+    
+    while (true) {
+      let result = await helper.apiClient.listRoleIds(query);
+      assume(result.roleIds.length).to.be.lessThan(2);
+      query.continuationToken = result.continuationToken;
+      roleIds = roleIds.concat(result.roleIds);
+      if (!query.continuationToken) {
+        break;
+      }
+    }
+
+    assume(roleIds).to.deeply.equal(allRoleIds.roleIds);
+  });
+
   test('updateRole with a **-scope', async () => {
     await helper.apiClient.updateRole('thing-id:' + clientId, {
       description: 'other',

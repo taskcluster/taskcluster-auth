@@ -594,39 +594,47 @@ builder.declare({
     continuationToken: /./,
     limit: /^[0-9]+$/,
   },
-  name:       'listRoleIds  ',
+  name:       'listRoleIds',
   input:      undefined,
   output:     'list-role-ids-response.yml',
   stability:  'stable',
   title:      'List Role IDs',
   description: [
-    'Get a list role IDs based on the limit and continuationToken',
+    'Get a list of role IDs based on the limit and continuationToken',
     'provided. If no limit is provided then all role IDs are returned.',
   ].join('\n'),
 }, async function(req, res) {
-  let continuationToken = req.query.continuationToken || undefined;
+  let continuationToken = parseInt(req.query.continuationToken, 10);
   let limit = parseInt(req.query.limit, 10);
   let response = {};
 
   // Load all roles
   let roles = await this.Roles.get();
+  let length = roles.length;
 
-  //slice the list of roles based on continuationToken and limit
+  // Slice the list of roles based on continuationToken and limit
   if (continuationToken && limit) {
     roles = roles.slice(continuationToken, limit+continuationToken);
-    response.continuationToken = limit+continuationToken;
+    continuationToken = limit+continuationToken;
+
+    if (continuationToken < length) {
+      response.continuationToken = continuationToken;
+    }
   } else if (limit) {
-    roles = roles.slice(0, limit);   //if no continuationToken is provided
-    response.continuationToken = limit;
+    roles = roles.slice(0, limit);   // If no continuationToken is provided
+    continuationToken = limit;
+
+    if (continuationToken < length) {
+      response.continuationToken = continuationToken;
+    }
   }
 
-  //generate a list of roleIds corresponding to the selected roles
+  // Generate a list of roleIds corresponding to the selected roles
   let roleIds = roles.map(r => r.roleId);
 
   response.roleIds = roleIds;
 
   res.reply(response);
-
 });
 
 /** Get role */

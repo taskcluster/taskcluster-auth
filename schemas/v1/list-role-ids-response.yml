@@ -1,7 +1,7 @@
 $schema:  http://json-schema.org/draft-06/schema#
 title:                      "Get Role Ids Response"
 description: |
-  Get roleIds of roles based on continuationToken and limit
+  Get a list of role IDs
 type: object
 properties:
   roleIds:
@@ -11,7 +11,7 @@ properties:
     items:              {type: string}
   continuationToken:
     title:                "Continuation Token"
-    type:                 string
+    type:                 number
     description: |
       A continuation token is returned if there are more results than listed
       here. You can optionally provide the token in the request payload to
