@@ -1,0 +1,21 @@
+$schema:  http://json-schema.org/draft-06/schema#
+title:                      "Get Role Response"
+description: |
+  Get all details about a role
+type: object
+properties:
+  roleIds:
+    description: |
+      roleIds correspnding to the list of roles requested
+    type:                 array
+    items:              {type: string}
+  continuationToken:
+    title:                "Continuation Token"
+    type:                 string
+    description: |
+      A continuation token is returned if there are more results than listed
+      here. You can optionally provide the token in the request payload to
+      load the additional results.
+additionalProperties: false
+required:
+  - roleIds

@@ -586,6 +586,48 @@ builder.declare({
   res.reply(roles.map(r => roleToJson(r, this)));
 });
 
+/** List role Ids **/
+builder.declare({
+  method:     'get',
+  route:      '/roleids/',
+  query: {
+    continuationToken: /./,
+    limit: /^[0-9]+$/,
+  },
+  name:       'listRoleIds  ',
+  input:      undefined,
+  output:     'list-role-ids-response.yml',
+  stability:  'stable',
+  title:      'List Role IDs',
+  description: [
+    'Get a list role IDs based on the limit and continuationToken',
+    'provided. If no limit is provided then all role IDs are returned.',
+  ].join('\n'),
+}, async function(req, res) {
+  let continuationToken = req.query.continuationToken || undefined;
+  let limit = parseInt(req.query.limit, 10);
+  let response = {};
+
+  // Load all roles
+  let roles = await this.Roles.get();
+
+  //slice the list of roles based on continuationToken and limit
+  if (continuationToken && limit) {
+    roles = roles.slice(continuationToken, limit+continuationToken);
+    response.continuationToken = limit+continuationToken;
+  } else if (limit) {
+    roles = roles.slice(0, limit);   //if no continuationToken is provided
+  }
+
+  //generate a list of roleIds corresponding to the selected roles
+  let roleIds = roles.map(r => r.roleId);
+
+  response.roleIds = roleIds;
+
+  res.reply(response);
+
+});
+
 /** Get role */
 builder.declare({
   method:     'get',
