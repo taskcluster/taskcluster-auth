@@ -1,7 +1,7 @@
 $schema:  http://json-schema.org/draft-06/schema#
-title:                      "Get Role Response"
+title:                      "Get Role Ids Response"
 description: |
-  Get all details about a role
+  Get roleIds of roles based on continuationToken and limit
 type: object
 properties:
   roleIds:
