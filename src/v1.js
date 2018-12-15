@@ -6,6 +6,7 @@ const slugid = require('slugid');
 const _ = require('lodash');
 const signaturevalidator = require('./signaturevalidator');
 const ScopeResolver = require('./scoperesolver');
+const Hashids = require('hashids');
 
 /**
  * Helper to return a role as defined in the blob to one suitable for return.
@@ -600,10 +601,12 @@ builder.declare({
   stability:  'stable',
   title:      'List Role IDs',
   description: [
-    'Get a list of role IDs based on the limit and continuationToken',
-    'provided. If no limit is provided then all role IDs are returned.',
+    'If no limit is given, the roleIds of all roles are returned. Since this',
+    'list may become long, callers can use the `limit` and `continuationToken`',
+    'query arguments to page through the responses.',
   ].join('\n'),
 }, async function(req, res) {
+  let hashids = new Hashids();
   let continuationToken = parseInt(req.query.continuationToken, 10);
   let limit = parseInt(req.query.limit, 10);
   let response = {};
@@ -618,14 +621,14 @@ builder.declare({
     continuationToken = limit+continuationToken;
 
     if (continuationToken < length) {
-      response.continuationToken = continuationToken;
+      response.continuationToken = hashids.encode(continuationToken);
     }
   } else if (limit) {
     roles = roles.slice(0, limit);   // If no continuationToken is provided
     continuationToken = limit;
 
     if (continuationToken < length) {
-      response.continuationToken = continuationToken;
+      response.continuationToken = hashids.encode(continuationToken);
     }
   }
 

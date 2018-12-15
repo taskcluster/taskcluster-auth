@@ -6,6 +6,7 @@ const _ = require('lodash');
 const assume = require('assume');
 const testing = require('taskcluster-lib-testing');
 const taskcluster = require('taskcluster-client');
+const Hashids = require('hashids');
 
 helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
@@ -139,26 +140,49 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   test('listRoleIds', async () => {
+    await helper.Roles.modify((roles) => roles.splice(0));
+
+    // Create 4 dummy roles
+    await helper.apiClient.createRole('thing-id:' + clientId, {
+      description: 'test role',
+      scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-2'],
+    });
+    for (let i=0;i<3;i++) {
+      let tempClientId = clientId + i;
+      await helper.apiClient.createRole('thing-id:' + tempClientId, {
+        description: 'test role',
+        scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-2'],
+      });
+    }
+
     let result = await helper.apiClient.listRoleIds();
+
     assert(result.roleIds.some(roleId => roleId === 'thing-id:' + clientId));
+    assert(result.roleIds.length === 4);
   });
 
   test('listRoleIds (limit, [continuationToken])', async () => {
+    let hashids = new Hashids();
     let roleIds = [];
     let query = {limit:1};
-    let allRoleIds = await helper.apiClient.listRoleIds();
-    
+    let allRoleIds = {};
+    let count=0;
+
+    allRoleIds = await helper.apiClient.listRoleIds();
+
     while (true) {
       let result = await helper.apiClient.listRoleIds(query);
       assume(result.roleIds.length).to.be.lessThan(2);
-      query.continuationToken = result.continuationToken;
+      query.continuationToken = hashids.decode(result.continuationToken)[0];
       roleIds = roleIds.concat(result.roleIds);
+      count++;
       if (!query.continuationToken) {
         break;
       }
     }
 
-    assume(roleIds).to.deeply.equal(allRoleIds.roleIds);
+    assume(roleIds.sort()).to.deeply.equal(allRoleIds.roleIds.sort());
+    assume(count).to.be.greaterThan(0);
   });
 
   test('updateRole with a **-scope', async () => {
@@ -170,6 +194,18 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   test('updateRole (add scope)', async () => {
+    await helper.Roles.modify((roles) => roles.splice(0));
+
+    // Generating dummy roles
+    await helper.apiClient.createRole('thing-id:' + clientId, {
+      description: 'test role',
+      scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-2'],
+    });
+    await helper.apiClient.createRole('thing-id:' + clientId.slice(0, 11) + '*', {
+      description: 'test role',
+      scopes: ['dummy-scope-2'],
+    });
+
     let r1 = await helper.apiClient.role('thing-id:' + clientId);
 
     await testing.sleep(100);
@@ -178,6 +214,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
       description: 'test role',
       scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-3'],
     });
+
     assume(new Date(r2.lastModified).getTime()).greaterThan(
       new Date(r1.lastModified).getTime()
     );
