@@ -607,8 +607,8 @@ builder.declare({
   ].join('\n'),
 }, async function(req, res) {
   let hashids = new Hashids();
-  let continuationToken = parseInt(req.query.continuationToken, 10);
-  let limit = parseInt(req.query.limit, 10);
+  let continuationToken = parseInt(req.query.continuationToken, 10) || undefined;
+  let limit = parseInt(req.query.limit, 10) || undefined;
   let response = {};
 
   // Load all roles
@@ -617,18 +617,18 @@ builder.declare({
 
   // Slice the list of roles based on continuationToken and limit
   if (continuationToken && limit) {
-    roles = roles.slice(continuationToken, limit+continuationToken);
-    continuationToken = limit+continuationToken;
+    roles = roles.slice(continuationToken, limit + continuationToken);
+    continuationToken = limit + continuationToken;
 
     if (continuationToken < length) {
-      response.continuationToken = hashids.encode(continuationToken);
+      response.continuationToken = hashids.encode(continuationToken, 10);
     }
   } else if (limit) {
     roles = roles.slice(0, limit);   // If no continuationToken is provided
     continuationToken = limit;
 
     if (continuationToken < length) {
-      response.continuationToken = hashids.encode(continuationToken);
+      response.continuationToken = hashids.encode(continuationToken, 10);
     }
   }
 
