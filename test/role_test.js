@@ -6,7 +6,6 @@ const _ = require('lodash');
 const assume = require('assume');
 const testing = require('taskcluster-lib-testing');
 const taskcluster = require('taskcluster-client');
-const Hashids = require('hashids');
 
 helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], function(mock, skipping) {
   helper.withPulse(mock, skipping);
@@ -150,7 +149,7 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
     });
     for (let i=0;i<3;i++) {
       let tempRoleId = `${clientId}${i}`;
-      await helper.apiClient.createRole(`thing-id:${clientId}`, {
+      await helper.apiClient.createRole(tempRoleId, {
         description: 'test role',
         scopes: ['dummy-scope-1', 'auth:create-role:*', 'dummy-scope-2'],
       });
@@ -163,18 +162,17 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
   });
 
   test('listRoleIds (limit, [continuationToken])', async () => {
-    let hashids = new Hashids();
     let roleIds = [];
-    let query = {limit:1};
     let allRoleIds = {};
     let count=0;
+    let query = {limit: 1};
 
     allRoleIds = await helper.apiClient.listRoleIds();
 
     while (true) {
       let result = await helper.apiClient.listRoleIds(query);
       assume(result.roleIds.length).to.be.lessThan(2);
-      query.continuationToken = hashids.decode(result.continuationToken)[0];
+      query.continuationToken = result.continuationToken;
       roleIds = roleIds.concat(result.roleIds);
       count++;
       if (!query.continuationToken) {
@@ -184,6 +182,14 @@ helper.secrets.mockSuite(helper.suiteName(__filename), ['app', 'azure'], functio
 
     assume(roleIds.sort()).to.deeply.equal(allRoleIds.roleIds.sort());
     assume(count).to.be.greaterThan(1);
+
+    // Testing for erroneous continuationToken
+    query.limit = 1;
+    query.continuationToken = 'FOOBAR';
+
+    await helper.apiClient.listRoleIds(query)
+      .then(() => assert(false, 'Expected error'),
+        err => assert(err.statusCode === 400, 'Expected 400'));
   });
 
   test('updateRole with a **-scope', async () => {

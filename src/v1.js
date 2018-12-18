@@ -607,9 +607,22 @@ builder.declare({
   ].join('\n'),
 }, async function(req, res) {
   let hashids = new Hashids();
-  let continuationToken = parseInt(req.query.continuationToken, 10) || undefined;
+  let continuationToken;
   let limit = parseInt(req.query.limit, 10) || undefined;
   let response = {};
+
+  // Assign the continuationToken
+  if (req.query.continuationToken) {
+    continuationToken = hashids.decode(req.query.continuationToken);
+    // If continuationToken is invalid
+    if(continuationToken.length === 0){
+      return res.reportError('InputError', 'Invalid continuationToken', {});
+    }
+    // Assign the decoded token value
+    continuationToken = continuationToken[0];
+  } else {
+    continuationToken = undefined;
+  }
 
   // Load all roles
   let roles = await this.Roles.get();
