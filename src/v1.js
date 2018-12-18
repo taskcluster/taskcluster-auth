@@ -615,7 +615,7 @@ builder.declare({
   if (req.query.continuationToken) {
     continuationToken = hashids.decode(req.query.continuationToken);
     // If continuationToken is invalid
-    if(continuationToken.length === 0){
+    if (continuationToken.length === 0) {
       return res.reportError('InputError', 'Invalid continuationToken', {});
     }
     // Assign the decoded token value
